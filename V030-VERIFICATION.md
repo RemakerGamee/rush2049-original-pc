@@ -1,5 +1,7 @@
 # Windows v0.3.0 verification
 
+The final distribution build was reproduced in a new source/build tree from pinned upstream Git objects, the published patch recipes, and raw generated local US-ROM inputs. No donor objects or compiled libraries were reused. All 23 wrapper definitions were checked. The full Release compile and configuration, controller save/reload (89 checks) and controller submission checks passed. Patch files use LF endings so the recipe applies to clean Git exports on Windows or WSL.
+
 The release includes the reviewed Dear ImGui settings and libultraship Config component, RTX 5080 RT64 Vulkan path, controller presets/remapping/submissions, Memory Pak / Rumble Pak preference, title-screen cheat activation and Enable all cheats button. Original and Remaster use the same compiled runtime; the launch choice controls the replacement texture pack and circuit lighting.
 
 Windows Release build passed. Native configuration/state checks cover saved display choices and Pak modes, pre-Start cheat activation, all 21 modifier bindings, revision idempotence, transition refresh, persistence and master-OFF restoration. Controller profile save/reload and virtual device lifecycle passed 89 checks. Submission checks cover required name/type, profile/device matching, exported mappings, privacy, URL encoding and local JSON reload.
