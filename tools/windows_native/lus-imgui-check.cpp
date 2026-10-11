@@ -36,9 +36,16 @@ int main(){
         loaded.refresh=119;bool bad_rate=false;try{loaded.save();}catch(...){bad_rate=true;}
         if(!bad_rate || rush::options::Store(file).refresh!=240)throw std::runtime_error("Invalid refresh rate changed saved preferences");
         loaded.refresh=60;
-        loaded.window_size=6;
+        loaded.window_size=7;
         bool invalid_size=false;try{loaded.save();}catch(...){invalid_size=true;}
         if(!invalid_size || rush::options::Store(file).window_size!=3)throw std::runtime_error("Invalid resolution changed saved preferences");
+        loaded.window_size=6;loaded.window_width=960;loaded.window_height=640;loaded.save();
+        auto custom=rush::options::Store(file);
+        if(custom.window_dimensions()!=std::array<int,2>{960,640})throw std::runtime_error("Custom window dimensions lost on restart");
+        loaded.window_width=0;bool bad_width=false;try{loaded.save();}catch(...){bad_width=true;}
+        if(!bad_width || rush::options::Store(file).window_dimensions()!=std::array<int,2>{960,640})throw std::runtime_error("Invalid custom width changed saved preferences");
+        rush::options::Store defaults({});
+        if(defaults.fullscreen || defaults.window_dimensions()!=std::array<int,2>{800,600})throw std::runtime_error("Fresh window default is not compact");
         std::ofstream(file)<<"{\"schema\":1,\"windowSize\":5}";
         if(rush::options::Store(file).window_size!=5)throw std::runtime_error("Legacy 4K selection changed during migration");
         std::ofstream(file)<<"invalid old configuration";

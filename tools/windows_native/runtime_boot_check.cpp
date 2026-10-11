@@ -755,12 +755,9 @@ static void update_window(void*) {
     }
     if(rush::options::controllers.exchange(false) && controller_input)controller_input->open_remapping(rush::options::window);
     int requested_size=rush::options::window_size_request.exchange(-1);
-    if(requested_size>=0 && requested_size<6 && rush::options::window){
-        constexpr int sizes[][2]={{640,480},{1280,720},{1920,1080},{2560,1440},{3440,1440},{3840,2160}};
-        SDL_SetWindowSize(rush::options::window,sizes[requested_size][0],sizes[requested_size][1]);
-        int width=0,height=0;SDL_GetWindowSize(rush::options::window,&width,&height);
-        std::printf("LUS_WINDOW_RESOLUTION: %d x %d\n",width,height);
-    }
+    static uint64_t pending_window_extent=0;
+    const auto extent_request=rush::options::window_extent_request.exchange(0);
+    if(extent_request)pending_window_extent=extent_request;
     int requested_resolution=rush::options::resolution_request.exchange(-1);
     int requested_fullscreen=rush::options::fullscreen_request.exchange(-1);
     int requested_refresh=rush::options::refresh_request.exchange(-1);
@@ -773,6 +770,26 @@ static void update_window(void*) {
         ultramodern::renderer::set_graphics_config(config);
         rush::options::is_fullscreen.store(config.wm_option==ultramodern::renderer::WindowMode::Fullscreen);
         std::puts("LUS_GRAPHICS_REQUEST_APPLIED");
+    }
+    if(rush::options::window){
+        SDL_SysWMinfo wm{};SDL_VERSION(&wm.version);
+        // RT64 owns the native fullscreen transition. Apply the remembered
+        // window size only after it has restored a decorated window.
+        if(pending_window_extent && requested_fullscreen!=1 && !rush::options::is_fullscreen.load() && SDL_GetWindowWMInfo(rush::options::window,&wm) && !(GetWindowLongPtrW(wm.info.win.window,GWL_STYLE)&WS_POPUP)){
+            int width=int(pending_window_extent>>32),height=int(uint32_t(pending_window_extent));
+            SDL_Rect usable{};const int display=SDL_GetWindowDisplayIndex(rush::options::window);
+            if(display>=0 && SDL_GetDisplayUsableBounds(display,&usable)==0){
+                int top=0,left=0,bottom=0,right=0;SDL_GetWindowBordersSize(rush::options::window,&top,&left,&bottom,&right);
+                width=std::min(width,std::max(640,usable.w-left-right-24));height=std::min(height,std::max(360,usable.h-top-bottom-24));
+            }
+            if(IsZoomed(wm.info.win.window))ShowWindow(wm.info.win.window,SW_RESTORE);
+            SDL_SetWindowSize(rush::options::window,width,height);
+            SDL_SetWindowPosition(rush::options::window,SDL_WINDOWPOS_CENTERED_DISPLAY(display<0?0:display),SDL_WINDOWPOS_CENTERED_DISPLAY(display<0?0:display));
+            pending_window_extent=0;
+            std::printf("LUS_WINDOW_RESOLUTION: %d x %d\n",width,height);
+        }
+        int width=0,height=0;SDL_GetWindowSize(rush::options::window,&width,&height);
+        rush::options::actual_window_extent.store(rush::options::pack_extent(width,height));
     }
 #endif
     SDL_Event event;
@@ -860,8 +877,9 @@ int wmain(int argc,wchar_t** wide_argv) {
     require(SDL_Init(SDL_INIT_VIDEO | rush::input::sdl_init_flags | (check_startup_run && !audio_windows_output ? SDL_INIT_AUDIO : 0)) == 0, SDL_GetError());
     controller_input = std::make_unique<rush::input::System>(keyboard_input);
     auto* window = SDL_CreateWindow(std::getenv("RUSH_REMASTER_TEXTURE_PACK")?"Rush 2049 Remaster":"Rush 2049 Original", SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_VULKAN | (check_framebuffer ? 0 : SDL_WINDOW_HIDDEN));
+        SDL_WINDOWPOS_UNDEFINED, 800, 600, SDL_WINDOW_VULKAN | SDL_WINDOW_RESIZABLE | (check_framebuffer ? 0 : SDL_WINDOW_HIDDEN));
     require(window != nullptr, SDL_GetError());
+    SDL_SetWindowMinimumSize(window,640,360);
     recomp::Configuration cfg{};
     cfg.project_version = {0, 0, 1, "diagnostic"};
     SDL_SysWMinfo native{};

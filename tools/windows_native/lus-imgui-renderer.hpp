@@ -68,7 +68,17 @@ inline void draw(RenderCommandList* commands,RenderFramebuffer*){
             ImGui::SetNextItemWidth(std::max(100.0f,ImGui::GetContentRegionAvail().x-150.0f));
             ImGui::Combo("Render resolution",&store->resolution,"Original\0Original 2x\0Window scale\0");
             ImGui::SetNextItemWidth(std::max(100.0f,ImGui::GetContentRegionAvail().x-150.0f));
-            ImGui::Combo("Window resolution",&store->window_size,"Standard (640 x 480)\0 720p (1280 x 720)\0 1080p (1920 x 1080)\0 1440p 16:9 (2560 x 1440)\0 1440p 21:9 (3440 x 1440)\0 4K (3840 x 2160)\0");
+            ImGui::Combo("Window resolution",&store->window_size,"Standard (640 x 480)\0 720p (1280 x 720)\0 1080p (1920 x 1080)\0 1440p 16:9 (2560 x 1440)\0 1440p 21:9 (3440 x 1440)\0 4K (3840 x 2160)\0Custom\0");
+            if(store->window_size==6){
+                ImGui::InputInt("Window width",&store->window_width,10,100);
+                ImGui::InputInt("Window height",&store->window_height,10,100);
+            }
+            const auto extent=actual_window_extent.load();
+            ImGui::Text("Current window: %u x %u",unsigned(extent>>32),unsigned(uint32_t(extent)));
+            ImGui::BeginDisabled(is_fullscreen.load() || !extent);
+            if(ImGui::Button("Use current window size")){store->window_size=6;store->window_width=int(extent>>32);store->window_height=int(uint32_t(extent));}
+            ImGui::EndDisabled();
+            ImGui::TextWrapped("Drag the window edges to resize. Use current window size, then Apply and save, to remember it. Window sizes fit the usable desktop area.");
             const int rates[]={60,120,144,165,180,200,240};int selected=0;
             for(int i=0;i<7;++i)if(store->refresh==rates[i])selected=i;
             if(ImGui::Combo("Refresh rate",&selected,"60 Hz\0 120 Hz\0 144 Hz\0 165 Hz\0 180 Hz\0 200 Hz\0 240 Hz\0"))store->refresh=rates[selected];
@@ -98,7 +108,7 @@ inline void draw(RenderCommandList* commands,RenderFramebuffer*){
         ImGui::EndChild();
         ImGui::Separator();
         if(ImGui::Button("Apply and save")){
-            try{if(page==2){store->save();save_controller_draft();}else if(page==4 && cheat_preferences){if(!cheat_preferences->set(cheat_draft,error))throw std::runtime_error(error);}else{store->save();resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);window_size_request.store(store->window_size);refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);}error.clear();std::puts("LUS_OPTIONS_SAVED");}
+            try{if(page==2){store->save();save_controller_draft();}else if(page==4 && cheat_preferences){if(!cheat_preferences->set(cheat_draft,error))throw std::runtime_error(error);}else{store->save();resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);}error.clear();std::puts("LUS_OPTIONS_SAVED");}
             catch(const std::exception& e){error=e.what();}
         }
         ImGui::SameLine();if(ImGui::Button("Close"))visible.store(false);
@@ -125,7 +135,7 @@ inline void init(RT64::Application* application){
     auto& style=ImGui::GetStyle();style.WindowRounding=6;style.FrameRounding=4;style.Colors[ImGuiCol_WindowBg]=ImVec4(0.035f,0.05f,0.08f,0.93f);style.Colors[ImGuiCol_Button]=ImVec4(0.04f,0.30f,0.52f,1);
     RT64::SetRenderHooks(nullptr,draw,deinit);available.store(true);
     listener.previous=app->appWindow->listener;app->appWindow->listener=&listener;
-    if(file && std::filesystem::exists(std::filesystem::u8path(file))){resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);window_size_request.store(store->window_size);refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);}
+    resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);
     visible.store(std::getenv("RUSH_OPTIONS_OPEN")!=nullptr);
     std::puts("LUS_IMGUI_READY: F1 settings; RT64 renderer retained");
 }

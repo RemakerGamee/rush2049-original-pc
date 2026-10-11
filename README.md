@@ -27,6 +27,8 @@ Horizontal settings categories: Interface, Display, Controllers, Diagnostics and
 
 Display offers Standard, 720p, 1080p, 1440p 16:9, 1440p 21:9 (3440×1440) and 4K (3840×2160), plus VSync and presentation targets of 60/120/144/165/180/200/240 Hz. Fullscreen uses the desktop size; presentation targets do not change the monitor's Windows refresh rate.
 
+The adjustable-window update starts fresh windowed sessions at 800×600. Under Display, select Custom and enter a width and height, or drag the window edges and select Use current window size. Apply and save remembers the choice. Sizes fit the desktop's usable area; changing the window does not change Windows display settings. Existing saved resolution selections remain supported.
+
 Keyboard is enabled by default: Enter Start, Z A, X B, Space Z trigger, arrows stick, Q/E L/R, I/J/K/L C up/left/down/right. Controllers supports four ports, per-button input additions beside Keyboard, named verified wired N64 and wireless USB dongle presets, SDL/Xbox mappings, custom remapping, stick sensitivity and deadzone.
 
 Controllers includes **Memory Pak / Rumble Pak** selection, applied on the next launch. Memory storage currently attaches to Port 1. Not all controllers support rumble; check the controller manufacturer's specifications. Physical rumble compatibility depends on the device and SDL support.
