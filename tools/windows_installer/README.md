@@ -7,7 +7,7 @@ First build the native game from the pinned sources with `tools/windows_native/p
 Create a text-only archive of the repository integration sources, preserving COPYING, dependency pins, patches and generation recipes. Exclude .git, binaries, generated original-game sources, ROMs, expanded images and local texture packs. Then run:
 
 ```powershell
-python tools/windows_installer/build_installer.py --native-root C:\Build\Rush2049 --output C:\Build\Rush2049-Package --source-archive C:\Build\Integration-Source-v0.3.1.zip --icon C:\Build\Artwork\rush2049.ico
+python tools/windows_installer/build_installer.py --native-root C:\Build\Rush2049 --output C:\Build\Rush2049-Package --source-archive C:\Build\Integration-Source-v0.3.2.zip --icon C:\Build\Artwork\rush2049.ico
 ```
 
 Use a new output folder. This requires the documented Visual Studio C++ toolchain and CMake on the maintainer's machine. The installer embeds the compiled game, required app-local DLLs, notices and integration source archive. Setup and launcher link the C++ runtime statically. Check current redistribution terms for the licensed Visual Studio installation before publishing its redistributable DLLs.
@@ -19,3 +19,5 @@ For isolated verification, setup accepts `--install --rom PATH --directory NEW_A
 For the separate Remastered executable, pass --remaster-pack PATH pointing to the reviewed RT64 hash-version-5 pack with 5,957 mappings. Only the mapped PNGs and rt64.json are embedded; provenance captures and unrelated files are excluded. Keep artwork out of source Git history. The remastered launcher enables its bundled pack after clearing inherited diagnostic overrides.
 
 Add `--remaster-only` to make a dedicated Remastered libultraship package. It launches directly with the texture pack and menu lighting, without showing the Original/Remaster chooser. It has its own install folder and named shortcut while sharing the user's existing save directory. The separate Original-only installer continues to use the same libultraship/ImGui settings.
+
+The v0.3.2 artwork icon is supplied separately as a release asset. Credit: [POOTERMAN](https://www.deviantart.com/pooterman). `embed_icon.py` embeds the supplied ICO into a staged copy of the unsigned game EXE before payload hashes are calculated. The executable code remains unchanged.

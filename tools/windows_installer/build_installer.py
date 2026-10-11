@@ -15,7 +15,7 @@ def command(args,log):
         result=subprocess.run([str(x) for x in args],stdout=stream,stderr=subprocess.STDOUT)
     if result.returncode: raise RuntimeError('Build failed; inspect '+str(log))
 
-def resources(directory,payload,remastered=False,icon=None,remaster_only=False):
+def resources(directory,payload,remastered=False,icon=None,remaster_only=False,native_menus=False):
     directory.mkdir(parents=True)
     entries=[];rc=['#include <windows.h>\n']
     if icon is None: raise ValueError('A maintainer-supplied Windows ICO is required')
@@ -33,7 +33,7 @@ def resources(directory,payload,remastered=False,icon=None,remaster_only=False):
     header='#pragma once\nnamespace payload { struct Entry { int id; const wchar_t* path; const char* sha256; }; inline constexpr Entry files[]={\n'
     header+=''.join('{'+str(row['id'])+',L'+json.dumps(row['path'])+','+json.dumps(row['sha256'])+'},\n' for row in entries)
     if remaster_only and not remastered:raise ValueError('Remaster-only requires a texture pack')
-    header+='}; inline constexpr bool remastered='+('true' if remastered else 'false')+'; inline constexpr bool remaster_only='+('true' if remaster_only else 'false')+'; inline constexpr wchar_t edition[]=L"Rush 2049 '+('Remastered libultraship' if remaster_only else 'Remastered 4x' if remastered else 'Original libultraship')+'"; }\n'
+    header+='}; inline constexpr bool lus='+('false' if native_menus else 'true')+'; inline constexpr bool remastered='+('true' if remastered else 'false')+'; inline constexpr bool remaster_only='+('true' if remaster_only else 'false')+'; inline constexpr wchar_t edition[]=L"Rush 2049 '+(('Remastered' if remastered else 'Original')+('' if native_menus else ' libultraship'))+'"; }\n'
     (directory/'payload_table.hpp').write_text(header)
     (directory/'setup.rc').write_text(''.join(rc))
     return entries
@@ -41,6 +41,7 @@ def resources(directory,payload,remastered=False,icon=None,remaster_only=False):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--native-root',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--source-archive',required=True,type=Path);parser.add_argument('--remaster-pack',type=Path)
     parser.add_argument('--icon',required=True,type=Path,help='Maintainer-supplied multi-size Windows ICO; kept outside source Git')
+    parser.add_argument('--native-menus',action='store_true',help='Package the existing native-menu game without libultraship')
     parser.add_argument('--remaster-only',action='store_true',help='Launch the remaster directly without the visual-edition chooser')
     args=parser.parse_args()
     native=args.native_root.resolve();output=args.output.resolve()
@@ -53,6 +54,10 @@ def main():
     output.mkdir(parents=True);payload=output/'payload';payload.mkdir()
     for name in ('RushWindowsRT64.exe','SDL2.dll','dxcompiler.dll','dxil.dll'):
         shutil.copyfile(native/'build/Release'/name,payload/name)
+    from embed_icon import embed_icon
+    embed_icon(payload/'RushWindowsRT64.exe',args.icon)
+    shutil.copyfile(args.icon,payload/'Rush2049.ico')
+    shutil.copyfile(ROOT/'ARTWORK-CREDITS.txt',payload/'ARTWORK-CREDITS.txt')
     vswhere=Path(os.environ['ProgramFiles(x86)'])/'Microsoft Visual Studio/Installer/vswhere.exe'
     vs=Path(subprocess.check_output([vswhere,'-latest','-products','*','-requires','Microsoft.VisualStudio.Component.VC.Tools.x86.x64','-property','installationPath'],text=True).strip())
     redists=[p for p in (vs/'VC/Redist/MSVC').iterdir() if p.is_dir() and p.name[0].isdigit()]
@@ -80,18 +85,18 @@ def main():
             source=(pack/relative).resolve();assert source.is_relative_to(pack) and not (pack/relative).is_symlink()
             assert source.read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
             target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target);hashes.add(digest);paths.add(str(relative))
-    shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.1.zip')
+    shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.2.zip')
     shutil.copyfile(ROOT/'COPYING',payload/'COPYING')
     shutil.copyfile(ROOT/'README.md',payload/'README.md')
-    table=resources(output/'launcher-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only)
+    table=resources(output/'launcher-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only,args.native_menus)
     command(['cmake','-S',HERE,'-B',output/'launcher-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_RESOURCE_DIR='+str(output/'launcher-resources')],output/'launcher-configure.log')
     command(['cmake','--build',output/'launcher-build','--config','Release','--parallel','2'],output/'launcher-build.log')
     shutil.copyfile(output/'launcher-build/Release/Rush2049Original.exe',payload/'Rush2049Original.exe')
-    table=resources(output/'setup-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only)
+    table=resources(output/'setup-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only,args.native_menus)
     command(['cmake','-S',HERE,'-B',output/'setup-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_BUILD_SETUP=ON','-DRUSH_RESOURCE_DIR='+str(output/'setup-resources')],output/'setup-configure.log')
     command(['cmake','--build',output/'setup-build','--config','Release','--parallel','2'],output/'setup-build.log')
-    installer=output/('Rush2049-Remastered-PC-v0.3.1-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.1-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
-    manifest={'version':'v0.3.1','edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
+    installer=output/('Rush2049-Remastered-PC-v0.3.2-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.2-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
+    manifest={'version':'v0.3.2','edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
     (output/'package-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     (output/'SHA256SUMS.txt').write_text(manifest['installer_sha256']+'  '+installer.name+'\n')
     print(json.dumps({'installer':str(installer),'size':installer.stat().st_size,'sha256':manifest['installer_sha256'],'payload_files':len(table)}))

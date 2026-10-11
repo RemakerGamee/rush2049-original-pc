@@ -127,7 +127,7 @@ static void shortcut(const fs::path& app) {
     link->SetPath((app/L"Rush2049Original.exe").c_str());link->SetWorkingDirectory(app.c_str());link->SetDescription(payload::edition);
     link->SetIconLocation((app/L"Rush2049Original.exe").c_str(),0);
     IPersistFile* file=nullptr;if(SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&file)))){
-        const auto path=known(FOLDERID_Desktop)/(payload::remaster_only?L"Rush 2049 Remastered libultraship v0.3.1.lnk":payload::remastered?L"Rush 2049 Remastered v0.3.1.lnk":L"Rush 2049 Original libultraship v0.3.1.lnk");
+        const auto path=known(FOLDERID_Desktop)/(!payload::lus?(payload::remastered?L"Rush 2049 Remastered v0.3.2.lnk":L"Rush 2049 Original v0.3.2.lnk"):payload::remaster_only?L"Rush 2049 Remastered libultraship v0.3.2.lnk":payload::remastered?L"Rush 2049 Remastered v0.3.2.lnk":L"Rush 2049 Original libultraship v0.3.2.lnk");
         if(!fs::exists(path))file->Save(path.c_str(),TRUE);
         else if(SUCCEEDED(file->Load(path.c_str(),STGM_READWRITE))){
             wchar_t existing[MAX_PATH]{};
@@ -207,7 +207,7 @@ static int launch(const fs::path& app,const fs::path& data,bool preflight) {
     if(environment){for(auto p=environment;*p;p+=wcslen(p)+1){std::wstring row(p);auto eq=row.find(L'=');if(eq!=std::wstring::npos){const auto name=row.substr(0,eq);if(name.starts_with(L"RUSH_")||name==L"VK_DRIVER_FILES"||name==L"VK_ICD_FILENAMES")remove.push_back(name);}}FreeEnvironmentStringsW(environment);}
     for(const auto& name:remove)SetEnvironmentVariableW(name.c_str(),nullptr);
     if(visualEdition==1){SetEnvironmentVariableW(L"RUSH_REMASTER_TEXTURE_PACK",(app/L"remaster-pack").c_str());SetEnvironmentVariableW(L"RUSH_REMASTER_CIRCUIT_GLOW",L"1");}
-    SetEnvironmentVariableW(L"RUSH_LUS_IMGUI",L"1");
+    SetEnvironmentVariableW(L"RUSH_LUS_IMGUI",payload::lus?L"1":nullptr);
     SetEnvironmentVariableW(L"RUSH_OPTIONS_CONFIG",(data/L"options.json").c_str());
     SetEnvironmentVariableW(L"RUSH_CONTROLLER_PAK",(data/L"controller.mpk").c_str());SetEnvironmentVariableW(L"RUSH_INPUT_CONFIG",(data/L"input.cfg").c_str());
     SECURITY_ATTRIBUTES security{sizeof(security),nullptr,TRUE};
@@ -264,7 +264,7 @@ int WINAPI wWinMain(HINSTANCE app,HINSTANCE,LPWSTR,int show) {
     try {
         dataPath=known(FOLDERID_LocalAppData)/L"Rush2049Original/PlayerData";rootPath=self().parent_path();
 #ifdef RUSH_SETUP
-        rootPath=known(FOLDERID_LocalAppData)/(payload::remaster_only?L"Rush2049Original/App-Remaster-LUS-v0.3.1":payload::remastered?L"Rush2049Original/App-Remastered-v0.3.1":L"Rush2049Original/App-v0.3.1");
+        rootPath=known(FOLDERID_LocalAppData)/(!payload::lus?(payload::remastered?L"Rush2049Original/App-Remastered-Native-v0.3.2":L"Rush2049Original/App-Original-Native-v0.3.2"):payload::remaster_only?L"Rush2049Original/App-Remaster-LUS-v0.3.2":payload::remastered?L"Rush2049Original/App-Remastered-v0.3.2":L"Rush2049Original/App-v0.3.2");
 #endif
         bool explicitData=false;
         for(int i=1;i<argc;++i){std::wstring a=argv[i];if(a==L"--edition" && i+1<argc){std::wstring edition=argv[++i]; if(edition==L"original")visualEdition=0;else if(edition==L"remaster")visualEdition=1;else throw std::runtime_error("Choose original or remaster.");}else if(a==L"--install"){installMode=true;cli=true;}else if(a==L"--preflight"){preflight=true;cli=true;}else if(a==L"--no-shortcut")noShortcut=true;else if((a==L"--rom"||a==L"--directory"||a==L"--data-dir") && i+1<argc){const fs::path value=fs::absolute(argv[++i]).lexically_normal();if(a==L"--rom")romPath=value;else if(a==L"--directory")rootPath=value;else {dataPath=value;explicitData=true;}}else throw std::runtime_error("Unknown launch option.");}

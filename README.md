@@ -6,16 +6,20 @@ Play **San Francisco Rush 2049 for Nintendo 64 on Windows PC** with ready-to-ins
 
 ## Download and play
 
+Desktop, installer and executable icon artwork: **[POOTERMAN](https://www.deviantart.com/pooterman)**.
+
+![Rush 2049 PC artwork by POOTERMAN](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-PC-Artwork-POOTERMAN.png)
+
 Choose the version you want:
 
 | Choose one of four Windows downloads | Visuals | Settings interface |
 | --- | --- | --- |
-| [**Original** — v0.2.0 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.2.0/Rush2049-Original-PC-v0.2.0-Setup.exe) | Original game textures | Native Windows menus; without libultraship / ImGui |
-| [**Remastered** — v0.2.0 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.2.0/Rush2049-Remastered-PC-v0.2.0-Setup.exe) | Restored 4x texture pack and circuit lighting | Native Windows menus; without libultraship / ImGui |
-| [**Original + libultraship / ImGui** — v0.3.1 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.1/Rush2049-Original-Libultraship-PC-v0.3.1-Setup.exe) | Original game textures | Dear ImGui settings and libultraship Config; fullscreen fill |
-| [**Remastered + libultraship / ImGui** — v0.3.1 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.1/Rush2049-Remastered-Libultraship-PC-v0.3.1-Setup.exe) | Restored 4x texture pack and circuit lighting | Dear ImGui settings and libultraship Config; fullscreen fill |
+| [**Original** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Original-PC-v0.3.2-Setup.exe) | Original game textures | Native Windows menus; without libultraship / ImGui |
+| [**Remastered** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Remastered-PC-v0.3.2-Setup.exe) | Restored 4x texture pack and circuit lighting | Native Windows menus; without libultraship / ImGui |
+| [**Original + libultraship / ImGui** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Original-Libultraship-PC-v0.3.2-Setup.exe) | Original game textures | Dear ImGui settings and libultraship Config; fullscreen fill |
+| [**Remastered + libultraship / ImGui** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Remastered-Libultraship-PC-v0.3.2-Setup.exe) | Restored 4x texture pack and circuit lighting | Dear ImGui settings and libultraship Config; fullscreen fill |
 
-All four downloads require your own supported US Nintendo 64 ROM. The instructions and settings below describe **v0.3.1**; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts. Earlier [v0.3.0 downloads](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0), including the combined visual-choice installer and dedicated libultraship packages, remain available.
+All four downloads require your own supported US Nintendo 64 ROM. v0.3.2 updates the artwork icons and credit in all four installers; the native-menu game retains the v0.2.0 core and the libultraship/ImGui game retains the v0.3.1 core. The instructions and settings below describe the libultraship/ImGui choices; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts. Earlier [v0.3.0 downloads](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0), including the combined visual-choice installer and dedicated libultraship packages, remain available.
 
 The **Original installers** are smaller and use original ROM textures. The **Remastered installers** include the reviewed 5,957-texture pack and launch Remaster directly. Original bypasses the replacement pack and remastered circuit lighting; Remaster enables them. The two libultraship / ImGui choices use RT64 and the same settings, controller mappings and retained saves.
 
