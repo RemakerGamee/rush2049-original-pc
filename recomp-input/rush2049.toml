@@ -1,0 +1,116 @@
+[input]
+entrypoint = 0x80000400
+symbols_file_path = "symbols.toml"
+rom_file_path = "rush2049-all-images.bin"
+output_func_path = "../RecompiledFuncs-probe"
+
+[patches]
+renamed = ["memchr", "modff", "__isinf", "__isnan"]
+# Must be provided by the PC runtime before linking.
+ignored = ["osInvalICache_full", "__osSendInterrupt", "__osTlbFlush", "__osTlbInit", "osCauseGet", "osWritebackDCache_full", "__osTLBLookup"]
+
+[[patches.instruction]]
+func = "func_800277D0"
+vram = 0x800277E0
+value = 0x3C1F8002
+
+[[patches.instruction]]
+func = "func_800277D0"
+vram = 0x800277E4
+value = 0x37FF77E8
+
+[[patches.instruction]]
+func = "func_800278C4"
+vram = 0x800278EC
+value = 0x3C1F8002
+
+[[patches.instruction]]
+func = "func_800278C4"
+vram = 0x800278F0
+value = 0x37FF78F4
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027BA4
+value = 0x3C1F8002
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027BA8
+value = 0x37FF7BAC
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027BC8
+value = 0x3C1F8002
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027BCC
+value = 0x37FF7BD0
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027BEC
+value = 0x3C1F8002
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027BF0
+value = 0x37FF7BF4
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027C10
+value = 0x3C1F8002
+
+[[patches.instruction]]
+func = "func_80027B44"
+vram = 0x80027C14
+value = 0x37FF7C18
+
+[[patches.instruction]]
+func = "func_8002C5E0"
+vram = 0x8002C5F0
+value = 0x00000000
+
+# Unused local startup probe: no return value or array element is consumed.
+[[patches.instruction]]
+func = "rush_guest_main"
+vram = 0x80002124
+value = 0x00000000
+
+[[patches.hook]]
+func = "game_loop"
+before_vram = 0x800FD500
+text = "extern void rush_poll_runtime(uint8_t*); rush_poll_runtime(rdram);"
+
+[[patches.hook]]
+func = "dma_wait_complete"
+before_vram = 0x8008AB3C
+text = "extern void rush_poll_runtime(uint8_t*); rush_poll_runtime(rdram);"
+
+[[patches.hook]]
+func = "func_80096130"
+before_vram = 0x80096184
+text = "extern void rush_poll_runtime(uint8_t*); rush_poll_runtime(rdram);"
+
+[[patches.hook]]
+func = "overlay_a_func_8038B3EC"
+before_vram = 0x8038B4E8
+text = "extern void rush_poll_runtime(uint8_t*); rush_poll_runtime(rdram);"
+
+[[patches.hook]]
+func = "overlay_a_func_8038B388"
+before_vram = 0x8038B3DC
+text = "extern void rush_poll_runtime(uint8_t*); rush_poll_runtime(rdram);"
+
+[[patches.hook]]
+func = "overlay_a_func_8038B940"
+before_vram = 0x8038BA20
+text = "extern void rush_poll_runtime(uint8_t*); rush_poll_runtime(rdram);"
+
+[[patches.hook]]
+func = "overlay_a_func_8038B940"
+before_vram = 0x8038BA84
+text = "extern void rush_poll_runtime(uint8_t*); rush_poll_runtime(rdram);"

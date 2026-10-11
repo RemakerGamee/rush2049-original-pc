@@ -1,0 +1,26 @@
+--- a/ultramodern/src/scheduling.cpp
++++ b/ultramodern/src/scheduling.cpp
+@@ -46,3 +46,23 @@
+     ultramodern::wait_for_external_message_timed(PASS_RDRAM1, 1);
+     ultramodern::check_running_queue(PASS_RDRAM1);
+ }
++
++// Explicit cooperative transfer for a verified waiting dependency. Does not change priorities.
++// The host caller must identify the dependency; this function never searches arbitrary guest memory.
++extern "C" bool rush_resume_ready_dependency(uint8_t* rdram, int32_t dependency) {
++    if (!rdram || !ultramodern::is_game_thread()) return false;
++    const auto self = ultramodern::this_thread();
++    const auto valid = [](int32_t pointer) {
++        const auto address = uint32_t(pointer);
++        return (address & 0xc0000000u) == 0x80000000u && (address & 3u) == 0 &&
++            (address & 0x1fffffffu) <= 0x800000u - sizeof(OSThread);
++    };
++    if (!valid(self) || !valid(dependency) || dependency == self ||
++        ultramodern::thread_queue_empty(rdram, ultramodern::running_queue) ||
++        ultramodern::thread_queue_peek(rdram, ultramodern::running_queue) != dependency) return false;
++    OSThread* target=TO_PTR(OSThread, dependency);
++    if (target->state != OSThreadState::QUEUED || target->queue != ultramodern::running_queue) return false;
++    ultramodern::thread_queue_pop(rdram, ultramodern::running_queue);
++    swap_to_thread(rdram, target);
++    return true;
++}

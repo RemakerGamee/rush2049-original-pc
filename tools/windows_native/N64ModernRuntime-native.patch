@@ -1,0 +1,394 @@
+--- a/librecomp/CMakeLists.txt
++++ b/librecomp/CMakeLists.txt
+@@ -53,7 +53,7 @@
+ target_compile_options(librecomp PRIVATE
+ #    -Wall
+ #    -Wextra
+-    -Wno-unused-parameter
++
+ )
+ 
+ if (WIN32)
+--- a/librecomp/src/ai.cpp
++++ b/librecomp/src/ai.cpp
+@@ -15,7 +15,7 @@
+     ultramodern::set_audio_frequency(freq);
+ }
+ 
+-extern "C" void osAiSetNextBuffer_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osAiSetNextBuffer_recomp(uint8_t* rdram, recomp_context* ctx) {
+     ultramodern::queue_audio_buffer(rdram, ctx->r4, ctx->r5);
+     ctx->r2 = 0;
+ }
+--- a/librecomp/src/cont.cpp
++++ b/librecomp/src/cont.cpp
+@@ -48,6 +48,11 @@
+     OSContPad dummy_data[MAXCONTROLLERS];
+ 
+     osContGetReadData(dummy_data);
++    static uint16_t previous=0;
++    if(dummy_data[0].button!=previous) {
++        std::printf("NATIVE_GUEST_PAD: buttons=%u error=%u destination=0x%08X\n",dummy_data[0].button,dummy_data[0].err_no,uint32_t(data));
++        previous=dummy_data[0].button;
++    }
+ 
+     for (int controller = 0; controller < MAXCONTROLLERS; controller++) {
+         if (dummy_data[controller].err_no == 0) {
+--- a/librecomp/src/pi.cpp
++++ b/librecomp/src/pi.cpp
+@@ -57,7 +57,7 @@
+     ctx->r2 = (gpr)recomp::drive_handle;
+ }
+ 
+-extern "C" void osCreatePiManager_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osCreatePiManager_recomp(uint8_t* rdram, recomp_context* ctx) {
+     ;
+ }
+ 
+@@ -309,7 +309,7 @@
+     }
+ }
+ 
+-extern "C" void osPiStartDma_recomp(RDRAM_ARG recomp_context* ctx) {
++extern "C" void rush_real_osPiStartDma_recomp(RDRAM_ARG recomp_context* ctx) {
+     uint32_t mb = ctx->r4;
+     uint32_t pri = ctx->r5;
+     uint32_t direction = ctx->r6;
+--- a/librecomp/src/ultra_translation.cpp
++++ b/librecomp/src/ultra_translation.cpp
+@@ -11,16 +11,16 @@
+     osInitialize();
+ }
+ 
+-extern "C" void osCreateThread_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osCreateThread_recomp(uint8_t* rdram, recomp_context* ctx) {
+     osCreateThread(rdram, (int32_t)ctx->r4, (OSId)ctx->r5, (int32_t)ctx->r6, (int32_t)ctx->r7,
+         (int32_t)MEM_W(0x10, ctx->r29), (OSPri)MEM_W(0x14, ctx->r29));
+ }
+ 
+-extern "C" void osStartThread_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osStartThread_recomp(uint8_t* rdram, recomp_context* ctx) {
+     osStartThread(rdram, (int32_t)ctx->r4);
+ }
+ 
+-extern "C" void osStopThread_recomp(uint8_t * rdram, recomp_context * ctx) {
++extern "C" void rush_real_osStopThread_recomp(uint8_t * rdram, recomp_context * ctx) {
+     osStopThread(rdram, (int32_t)ctx->r4);
+ }
+ 
+@@ -28,9 +28,18 @@
+     osDestroyThread(rdram, (int32_t)ctx->r4);
+ }
+ 
+-extern "C" void osYieldThread_recomp(uint8_t * rdram, recomp_context * ctx) {
+-    assert(false);
+-    // osYieldThread(rdram);
++extern "C" void rush_real_osYieldThread_recomp(uint8_t * rdram, recomp_context * ctx) {
++    // Preserve the current host stack while dispatching the next ready guest.
++    const auto self = ultramodern::this_thread();
++    assert(self != NULLPTR);
++    if (!ultramodern::thread_queue_empty(rdram, ultramodern::running_queue)) {
++        const auto next = ultramodern::thread_queue_peek(rdram, ultramodern::running_queue);
++        if (TO_PTR(OSThread, next)->priority >= TO_PTR(OSThread, self)->priority) {
++            ultramodern::thread_queue_pop(rdram, ultramodern::running_queue);
++            ultramodern::schedule_running_thread(rdram, self);
++            ultramodern::resume_thread_and_wait(rdram, TO_PTR(OSThread, next));
++        }
++    }
+ }
+ 
+ extern "C" void osSetThreadPri_recomp(uint8_t* rdram, recomp_context* ctx) {
+@@ -45,15 +54,15 @@
+     ctx->r2 = osGetThreadId(rdram, (int32_t)ctx->r4);
+ }
+ 
+-extern "C" void osCreateMesgQueue_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osCreateMesgQueue_recomp(uint8_t* rdram, recomp_context* ctx) {
+     osCreateMesgQueue(rdram, (int32_t)ctx->r4, (int32_t)ctx->r5, (s32)ctx->r6);
+ }
+ 
+-extern "C" void osRecvMesg_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osRecvMesg_recomp(uint8_t* rdram, recomp_context* ctx) {
+     ctx->r2 = osRecvMesg(rdram, (int32_t)ctx->r4, (int32_t)ctx->r5, (s32)ctx->r6);
+ }
+ 
+-extern "C" void osSendMesg_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osSendMesg_recomp(uint8_t* rdram, recomp_context* ctx) {
+     ctx->r2 = osSendMesg(rdram, (int32_t)ctx->r4, (OSMesg)ctx->r5, (s32)ctx->r6);
+ }
+ 
+@@ -61,11 +70,11 @@
+     ctx->r2 = osJamMesg(rdram, (int32_t)ctx->r4, (OSMesg)ctx->r5, (s32)ctx->r6);
+ }
+ 
+-extern "C" void osSetEventMesg_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osSetEventMesg_recomp(uint8_t* rdram, recomp_context* ctx) {
+     osSetEventMesg(rdram, (OSEvent)ctx->r4, (int32_t)ctx->r5, (OSMesg)ctx->r6);
+ }
+ 
+-extern "C" void osViSetEvent_recomp(uint8_t * rdram, recomp_context * ctx) {
++extern "C" void rush_real_osViSetEvent_recomp(uint8_t * rdram, recomp_context * ctx) {
+     osViSetEvent(rdram, (int32_t)ctx->r4, (OSMesg)ctx->r5, (u32)ctx->r6);
+ }
+ 
+--- a/librecomp/src/vi.cpp
++++ b/librecomp/src/vi.cpp
+@@ -10,11 +10,11 @@
+     osViSetXScale(ctx->f12.fl);
+ }
+ 
+-extern "C" void osCreateViManager_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osCreateViManager_recomp(uint8_t* rdram, recomp_context* ctx) {
+     ;
+ }
+ 
+-extern "C" void osViBlack_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osViBlack_recomp(uint8_t* rdram, recomp_context* ctx) {
+     osViBlack((uint32_t)ctx->r4);
+ }
+ 
+@@ -34,7 +34,7 @@
+     ctx->r2 = (gpr)(int32_t)osViGetNextFramebuffer();
+ }
+ 
+-extern "C" void osViSwapBuffer_recomp(uint8_t* rdram, recomp_context* ctx) {
++extern "C" void rush_real_osViSwapBuffer_recomp(uint8_t* rdram, recomp_context* ctx) {
+     osViSwapBuffer(rdram, (int32_t)ctx->r4);
+ }
+ 
+--- a/ultramodern/CMakeLists.txt
++++ b/ultramodern/CMakeLists.txt
+@@ -33,7 +33,7 @@
+ target_compile_options(ultramodern PRIVATE
+ #    -Wall
+ #    -Wextra
+-    -Wno-unused-parameter
++
+ )
+ 
+ if (WIN32)
+--- a/ultramodern/include/ultramodern/input.hpp
++++ b/ultramodern/include/ultramodern/input.hpp
+@@ -15,7 +15,7 @@
+         enum class Pak {
+             None,
+             RumblePak,
+-            // ControllerPak,
++            ControllerPak,
+             // TransferPak
+         };
+ 
+--- a/ultramodern/include/ultramodern/ultramodern.hpp
++++ b/ultramodern/include/ultramodern/ultramodern.hpp
+@@ -14,6 +14,7 @@
+ 
+ #include "ultra64.h"
+ 
++#include "ultramodern/runtime_clock.hpp"
+ #include "ultramodern/error_handling.hpp"
+ #include "ultramodern/events.hpp"
+ #include "ultramodern/input.hpp"
+@@ -104,11 +105,11 @@
+ uint32_t get_speed_multiplier();
+ 
+ // Time
+-std::chrono::high_resolution_clock::time_point get_start();
+-std::chrono::high_resolution_clock::duration time_since_start();
++runtime_clock::time_point get_start();
++runtime_clock::duration time_since_start();
+ void measure_input_latency();
+ void sleep_milliseconds(uint32_t millis);
+-void sleep_until(const std::chrono::high_resolution_clock::time_point& time_point);
++void sleep_until(const runtime_clock::time_point& time_point);
+ 
+ // Graphics
+ uint32_t get_target_framerate(uint32_t original);
+--- a/ultramodern/src/events.cpp
++++ b/ultramodern/src/events.cpp
+@@ -196,19 +196,14 @@
+     while (!exited) {
+         // Determine the next VI time (more accurate than adding 16ms each VI interrupt)
+         auto next = ultramodern::get_start() + (total_vis * 1000000us) / (60 * ultramodern::get_speed_multiplier());
+-        //if (next > std::chrono::high_resolution_clock::now()) {
++        //if (next > ultramodern::runtime_clock::now()) {
+         //    printf("Sleeping for %" PRIu64 " us to get from %" PRIu64 " us to %" PRIu64 " us \n",
+-        //        (next - std::chrono::high_resolution_clock::now()) / 1us,
+-        //        (std::chrono::high_resolution_clock::now() - events_context.start) / 1us,
++        //        (next - ultramodern::runtime_clock::now()) / 1us,
++        //        (ultramodern::runtime_clock::now() - events_context.start) / 1us,
+         //        (next - events_context.start) / 1us);
+         //} else {
+         //    printf("No need to sleep\n");
+         //}
+-        // Detect if there's more than a second to wait and wait a fixed amount instead for the next VI if so, as that usually means the system clock went back in time.
+-        if (std::chrono::floor<std::chrono::seconds>(next - std::chrono::high_resolution_clock::now()) > 1s) {
+-            // printf("Skipping the next VI wait\n");
+-            next = std::chrono::high_resolution_clock::now();
+-        }
+         ultramodern::sleep_until(next);
+         auto time_now = ultramodern::time_since_start();
+         // Calculate how many VIs have passed
+@@ -374,9 +369,9 @@
+                 PTR(u64) displaylist = task_action->task.t.data_ptr;
+                 ultramodern::extensions::on_displaylist_submitted(displaylist);
+ 
+-                [[maybe_unused]] auto renderer_start = std::chrono::high_resolution_clock::now();
++                [[maybe_unused]] auto renderer_start = ultramodern::runtime_clock::now();
+                 renderer_context->send_dl(&task_action->task);
+-                [[maybe_unused]] auto renderer_end = std::chrono::high_resolution_clock::now();
++                [[maybe_unused]] auto renderer_end = ultramodern::runtime_clock::now();
+ 
+                 dp_complete();
+                 // TODO hook the parsed event up to the actual parsing point when a callback is added to RT64.
+--- a/ultramodern/src/mesgqueue.cpp
++++ b/ultramodern/src/mesgqueue.cpp
+@@ -28,6 +28,8 @@
+ }
+ 
+ void ultramodern::enqueue_external_message_src(PTR(OSMesgQueue) mq, OSMesg msg, bool jam, EventMessageSource src) {
++    // An interrupt without a registered event queue has no message recipient.
++    if (mq == NULLPTR) return;
+     external_messages.enqueue({mq, msg, jam, requeue_enabled[static_cast<int>(src)]});
+ }
+ 
+--- a/ultramodern/src/threadqueue.cpp
++++ b/ultramodern/src/threadqueue.cpp
+@@ -43,14 +43,13 @@
+ bool ultramodern::thread_queue_remove(RDRAM_ARG PTR(PTR(OSThread)) queue_, PTR(OSThread) t_) {
+     debug_printf("[Thread Queue] Removing thread %d from queue 0x%08X\n", TO_PTR(OSThread, t_)->id, (uintptr_t)queue_);
+ 
+-    PTR(PTR(OSThread)) cur = queue_;
+-    while (cur != NULLPTR) {
+-        PTR(OSThread)* cur_ptr = queue_to_ptr(PASS_RDRAM queue_);
++    PTR(OSThread)* cur_ptr = queue_to_ptr(PASS_RDRAM queue_);
++    while (*cur_ptr != NULLPTR) {
+         if (*cur_ptr == t_) {
+             *cur_ptr = TO_PTR(OSThread, *cur_ptr)->next;
+             return true;
+         }
+-        cur = TO_PTR(OSThread, *cur_ptr)->next;
++        cur_ptr = &TO_PTR(OSThread, *cur_ptr)->next;
+     }
+ 
+     return false;
+--- a/ultramodern/src/threads.cpp
++++ b/ultramodern/src/threads.cpp
+@@ -274,12 +274,21 @@
+     if (t_ == NULLPTR) {
+         t_ = thread_self;
+     }
+-    // Check if the thread is stopping itself (arg is null or thread_self).
++    // Guest execution is cooperative: another game thread can only be queued,
++    // blocked, or already stopped while this one is executing.
++    OSThread* t = TO_PTR(OSThread, t_);
+     if (t_ == thread_self) {
++        t->state = OSThreadState::STOPPED;
++        t->queue = NULLPTR;
+         ultramodern::run_next_thread_and_wait(PASS_RDRAM1);
+     }
+-    else {
+-        assert(false);
++    else if (t->state != OSThreadState::STOPPED) {
++        assert(t->queue != NULLPTR);
++        const bool removed = ultramodern::thread_queue_remove(PASS_RDRAM t->queue, t_);
++        assert(removed);
++        t->state = OSThreadState::STOPPED;
++        t->queue = NULLPTR;
++        t->next = NULLPTR;
+     }
+ }
+ 
+--- a/ultramodern/src/timer.cpp
++++ b/ultramodern/src/timer.cpp
+@@ -12,7 +12,7 @@
+ #endif
+ 
+ // Start time for the program
+-static std::chrono::high_resolution_clock::time_point start_time = std::chrono::high_resolution_clock::now();
++static ultramodern::runtime_clock::time_point start_time = ultramodern::runtime_clock::now();
+ // Offset of the duration since program start used to calculate the value for osGetTime. 
+ static int64_t ostime_offset = 0;
+ // Game speed multiplier (1 means no speedup)
+@@ -44,7 +44,7 @@
+     moodycamel::BlockingConcurrentQueue<Action> action_queue{};
+ } timer_context;
+ 
+-uint64_t duration_to_ticks(std::chrono::high_resolution_clock::duration duration) {
++uint64_t duration_to_ticks(ultramodern::runtime_clock::duration duration) {
+     uint64_t delta_micros = std::chrono::duration_cast<std::chrono::microseconds>(duration).count();
+     // More accurate than using a floating point timer, will only overflow after running for 12.47 years
+     // Units: (micros * (counts/millis)) / (micros/millis) = counts
+@@ -58,12 +58,12 @@
+     return ticks * 1000us / counter_per_ms;
+ }
+ 
+-std::chrono::high_resolution_clock::time_point ticks_to_timepoint(uint64_t ticks) {
++ultramodern::runtime_clock::time_point ticks_to_timepoint(uint64_t ticks) {
+     return start_time + ticks_to_duration(ticks);
+ }
+ 
+ uint64_t time_now() {
+-    return duration_to_ticks(std::chrono::high_resolution_clock::now() - start_time);
++    return duration_to_ticks(ultramodern::runtime_clock::now() - start_time);
+ }
+ 
+ void timer_thread(RDRAM_ARG1) {
+@@ -118,7 +118,7 @@
+         active_timers.erase(cur_timer_);
+ 
+         // Determine how long to wait to reach the timer's timestamp
+-        auto wait_duration = ticks_to_timepoint(cur_timer->timestamp) - std::chrono::high_resolution_clock::now();
++        auto wait_duration = ticks_to_timepoint(cur_timer->timestamp) - ultramodern::runtime_clock::now();
+ 
+         // Wait for either the duration to complete or a new action to come through
+         if (wait_duration.count() >= 0 && timer_context.action_queue.wait_dequeue_timed(cur_action, wait_duration)) {
+@@ -127,6 +127,11 @@
+             active_timers.insert(cur_timer_);
+             // Process the new action
+             process_timer_action(cur_action);
++        }
++        else if (ultramodern::runtime_clock::now() < ticks_to_timepoint(cur_timer->timestamp)) {
++            // Relative host waits may expire early while the host clock is slewed.
++            // Keep the original emulated deadline and wait for its remainder.
++            active_timers.insert(cur_timer_);
+         }
+         else {
+             // Waiting for the timer completed, so send the timer's message to its message queue
+@@ -149,12 +154,12 @@
+     return speed_multiplier;
+ }
+ 
+-std::chrono::high_resolution_clock::time_point ultramodern::get_start() {
++ultramodern::runtime_clock::time_point ultramodern::get_start() {
+     return start_time;
+ }
+ 
+-std::chrono::high_resolution_clock::duration ultramodern::time_since_start() {
+-    return std::chrono::high_resolution_clock::now() - start_time;
++ultramodern::runtime_clock::duration ultramodern::time_since_start() {
++    return ultramodern::runtime_clock::now() - start_time;
+ }
+ 
+ extern "C" u32 osGetCount() {
+@@ -212,8 +217,8 @@
+     Sleep(millis);
+ }
+ 
+-void ultramodern::sleep_until(const std::chrono::high_resolution_clock::time_point& time_point) {
+-    auto time_now = std::chrono::high_resolution_clock::now();
++void ultramodern::sleep_until(const ultramodern::runtime_clock::time_point& time_point) {
++    auto time_now = ultramodern::runtime_clock::now();
+     if (time_point > time_now) {
+         long long delta_ms = std::chrono::ceil<std::chrono::milliseconds>(time_point - time_now).count();
+         // printf("Sleeping %lld %d ms\n", delta_ms, (uint32_t)delta_ms);
+@@ -227,8 +232,8 @@
+     std::this_thread::sleep_for(std::chrono::milliseconds{millis});
+ }
+ 
+-void ultramodern::sleep_until(const std::chrono::high_resolution_clock::time_point& time_point) {
+-    std::this_thread::sleep_until(time_point);
++void ultramodern::sleep_until(const ultramodern::runtime_clock::time_point& time_point) {
++    ultramodern::wait_for_runtime_deadline(time_point);
+ }
+ 
+ #endif

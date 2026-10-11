@@ -1,0 +1,46 @@
+--- a/src/hle/rt64_state.cpp
++++ b/src/hle/rt64_state.cpp
+@@ -1,3 +1,5 @@
++#include <chrono>
++#include <cstdio>
+ //
+ // RT64
+ //
+@@ -1154,7 +1156,7 @@
+ 
+         // Make sure pipelines for the ubershader have been created before rendering. This condition is executed regardless
+         // of whether rendering to RAM is active so the workload queue is guaranteed to have the pipelines ready as well.
+-        ext.rasterShaderCache->shaderUber->waitForPipelineCreation();
++        { auto native_wait_start=std::chrono::steady_clock::now(); ext.rasterShaderCache->shaderUber->waitForPipelineCreation(); double native_wait_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-native_wait_start).count(); if(native_wait_ms>20) std::printf("NATIVE_RENDER_WAIT: uber_pipeline ms=%.3f\n",native_wait_ms); }
+ 
+         if (renderToRDRAM) {
+             const hlslpp::float2 resolutionScale(1.0f, 1.0f);
+@@ -1310,7 +1312,7 @@
+                 }
+ 
+                 // Synchronize all texture uploads before filling out the GPU tiles and update the texture cache on the framebuffer renderer.
+-                ext.textureCache->waitForGPUUploads();
++                { auto native_wait_start=std::chrono::steady_clock::now(); ext.textureCache->waitForGPUUploads(); double native_wait_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-native_wait_start).count(); if(native_wait_ms>20) std::printf("NATIVE_RENDER_WAIT: texture_upload ms=%.3f\n",native_wait_ms); }
+                 framebufferRenderer->updateTextureCache(ext.textureCache);
+ 
+                 thread_local std::vector<BufferUploader *> bufferUploaders;
+@@ -1471,7 +1473,7 @@
+                 ext.framebufferGraphicsWorker->commandList->end();
+                 framebufferRenderer->waitForUploaders();
+                 ext.framebufferGraphicsWorker->execute();
+-                ext.framebufferGraphicsWorker->wait();
++                { auto native_wait_start=std::chrono::steady_clock::now(); ext.framebufferGraphicsWorker->wait(); double native_wait_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-native_wait_start).count(); if(native_wait_ms>20) std::printf("NATIVE_RENDER_WAIT: ram_gpu_fence ms=%.3f\n",native_wait_ms); }
+ 
+                 pairCursor = framebufferPairCursor;
+                 while (pairCursor < maxFramebufferPair) {
+@@ -1581,8 +1583,8 @@
+             ext.drawDataUploader->wait();
+             ext.transformsUploader->wait();
+             ext.framebufferGraphicsWorker->execute();
+-            ext.framebufferGraphicsWorker->wait();
+-            ext.textureCache->waitForGPUUploads();
++            { auto native_wait_start=std::chrono::steady_clock::now(); ext.framebufferGraphicsWorker->wait(); double native_wait_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-native_wait_start).count(); if(native_wait_ms>20) std::printf("NATIVE_RENDER_WAIT: ram_gpu_fence ms=%.3f\n",native_wait_ms); }
++            { auto native_wait_start=std::chrono::steady_clock::now(); ext.textureCache->waitForGPUUploads(); double native_wait_ms=std::chrono::duration<double,std::milli>(std::chrono::steady_clock::now()-native_wait_start).count(); if(native_wait_ms>20) std::printf("NATIVE_RENDER_WAIT: texture_upload ms=%.3f\n",native_wait_ms); }
+         }
+ 
+         // Evict from the texture cache that are too old and should no longer be maintained.

@@ -1,0 +1,132 @@
+--- a/N64ModernRuntime/ultramodern/src/threads.cpp
++++ b/N64ModernRuntime/ultramodern/src/threads.cpp
+@@ -2,12 +2,21 @@
+ #include <thread>
+ #include <cassert>
+ #include <string>
++#include <mutex>
++#include <unordered_set>
++
++
+ 
+ #include "ultramodern/ultra64.h"
+ #include "ultramodern/ultramodern.hpp"
+ #include "blockingconcurrentqueue.h"
+ 
+ #include "ultramodern/threads.hpp"
++
++extern std::atomic_bool exited;
++static std::mutex live_threads_mutex;
++static std::unordered_set<UltraThreadContext*> live_threads;
++static std::atomic_bool cleanup_stop{false};
+ 
+ // Native APIs only used to set thread names for easier debugging
+ #ifdef _WIN32
+@@ -152,6 +161,7 @@
+ 
+ void wait_for_resumed(RDRAM_ARG UltraThreadContext* thread_context) {
+     thread_context->running.wait();
++    if (exited.load()) throw ultramodern::thread_terminated{};
+     // If this thread's context was replaced by another thread or deleted, destroy it again from its own context.
+     // This will trigger thread cleanup instead.
+     if (TO_PTR(OSThread, ultramodern::this_thread())->context != thread_context) {
+@@ -208,7 +218,7 @@
+     }
+ 
+     // Make sure the thread wasn't replaced or destroyed before it was started.
+-    if (self->context == thread_context) {
++    if (!exited.load() && self->context == thread_context) {
+         debug_printf("[Thread] Thread started: %d\n", self->id);
+         try {
+             // Run the thread's function with the provided argument.
+@@ -222,11 +232,13 @@
+ 
+     // Check if the thread hasn't been destroyed or replaced. If so, then the thread terminated or destroyed itself,
+     // so mark this thread as destroyed and run the next queued thread.
+-    if (self->context == thread_context) {
++    if (!exited.load() && self->context == thread_context) {
+         self->context = nullptr;
+         run_next_thread(PASS_RDRAM1);
+     }
+ 
++    // Exit is cooperative: no queue scheduling or guest memory access after termination.
++    // The cleaner joins this host thread while RDRAM is still alive.
+     // Dispose of this thread now that it's completed or terminated.
+     ultramodern::cleanup_thread(thread_context);
+ }
+@@ -263,6 +275,7 @@
+     // Pass the context as an argument to the thread function to ensure that it can't get cleared before the thread captures its value.
+     UltraThreadContext* context = new UltraThreadContext{};
+     t->context = context;
++    { std::lock_guard lock(live_threads_mutex); live_threads.insert(context); }
+     context->host_thread = std::thread{_thread_func, PASS_RDRAM t_, entrypoint, arg, t->context};
+ 
+     // Wait until the thread is initialized to indicate that it's ready to be started.
+@@ -356,12 +369,20 @@
+ 
+ void thread_cleaner_func() {
+     using namespace std::chrono_literals;
+-    while (!exited) {
++    while (true) {
++        {
++            std::lock_guard lock(live_threads_mutex);
++            if (cleanup_stop.load()) {
++                if (live_threads.empty()) break;
++                for (auto* context : live_threads) context->running.signal();
++            }
++        }
+         UltraThreadContext* to_delete;
+         if (deleted_threads.wait_dequeue_timed(to_delete, 10ms)) {
+             debug_printf("[Cleanup] Deleting thread context %p\n", to_delete);
+ 
+             to_delete->host_thread.join();
++            { std::lock_guard lock(live_threads_mutex); live_threads.erase(to_delete); }
+             delete to_delete;
+         }
+     }
+@@ -376,5 +397,7 @@
+ }
+ 
+ void ultramodern::join_thread_cleaner_thread() {
++    cleanup_stop.store(true);
+     thread_cleaner_thread.join();
+-}
++    std::puts("NATIVE_GUEST_THREADS_JOINED: all guest host threads ended before RDRAM release");
++}
+--- a/N64ModernRuntime/ultramodern/src/mesgqueue.cpp
++++ b/N64ModernRuntime/ultramodern/src/mesgqueue.cpp
+@@ -1,5 +1,7 @@
+ #include <bitset>
+ #include <thread>
++
++extern std::atomic_bool exited;
+ 
+ #include "blockingconcurrentqueue.h"
+ 
+@@ -54,7 +56,9 @@
+ 
+ void ultramodern::wait_for_external_message(RDRAM_ARG1) {
+     QueuedMessage to_send;
+-    external_messages.wait_dequeue(to_send);
++    while (!external_messages.wait_dequeue_timed(to_send, std::chrono::milliseconds{10})) {
++        if (exited.load()) throw ultramodern::thread_terminated{};
++    }
+     if (!do_send(PASS_RDRAM to_send.mq, to_send.mesg, to_send.jam, false) && to_send.requeue_if_blocked) {
+         external_messages.enqueue(to_send);
+     }
+@@ -92,6 +96,7 @@
+ }
+ 
+ bool do_send(RDRAM_ARG PTR(OSMesgQueue) mq_, OSMesg msg, bool jam, bool block) {
++    if (exited.load()) throw ultramodern::thread_terminated{};
+     OSMesgQueue* mq = TO_PTR(OSMesgQueue, mq_);
+     if (!block) {
+         // If non-blocking, fail if the queue is full.
+@@ -131,6 +136,7 @@
+ }
+ 
+ bool do_recv(RDRAM_ARG PTR(OSMesgQueue) mq_, PTR(OSMesg) msg_, bool block) {
++    if (exited.load()) throw ultramodern::thread_terminated{};
+     OSMesgQueue* mq = TO_PTR(OSMesgQueue, mq_);
+     if (!block) {
+         // If non-blocking, fail if the queue is empty

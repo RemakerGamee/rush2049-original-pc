@@ -1,0 +1,15 @@
+__pycache__/
+*.pyc
+build/
+userdata/
+RecompiledFuncs*/
+RecompiledRsp/
+*.z64
+*.n64
+*.v64
+*.bin
+*.exe
+*.dll
+*.mpk
+*.png
+*.zip

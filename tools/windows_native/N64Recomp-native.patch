@@ -1,0 +1,46 @@
+--- a/src/cgenerator.cpp
++++ b/src/cgenerator.cpp
+@@ -230,7 +230,7 @@
+             // Nothing to do here, they're already U64
+             break;
+         case UnaryOpType::Lui:
+-            operand_string = "S32(" + operand_string + " << 16)"; 
++            operand_string = "S32(U32(" + operand_string + ") << 16)";
+             break;
+         case UnaryOpType::Mask5:
+             operand_string = "(" + operand_string + " & 31)";
+@@ -569,7 +569,11 @@
+     thread_local std::string expression{};
+     get_operand_string(op.output, UnaryOpType::None, ctx, output);
+     get_binary_expr_string(op.type, op.operands, ctx, output, expression);
++    if (output == "0") {
++        fmt::print(output_file, "(void)({});\n", expression);
++    } else {
+     fmt::print(output_file, "{} = {};\n", output, expression);
++    }
+ }
+ 
+ void N64Recomp::CGenerator::process_unary_op(const UnaryOp& op, const InstructionContext& ctx) const {
+@@ -579,7 +583,11 @@
+     thread_local std::string input{};
+     get_operand_string(op.output, UnaryOpType::None, ctx, output);
+     get_operand_string(op.input, op.operation, ctx, input);
++    if (output == "0") {
++        fmt::print(output_file, "(void)({});\n", input);
++    } else {
+     fmt::print(output_file, "{} = {};\n", output, input);
++    }
+ }
+ 
+ void N64Recomp::CGenerator::process_store_op(const StoreOp& op, const InstructionContext& ctx) const {
+--- a/src/operations.cpp
++++ b/src/operations.cpp
+@@ -30,6 +30,8 @@
+         { InstrId::cpu_cvt_l_d,   { UnaryOpType::ConvertLFromD,  Operand::FdU64,    Operand::FsDouble, true, true } },
+         { InstrId::cpu_cvt_s_l,   { UnaryOpType::ConvertSFromL,  Operand::Fd,       Operand::FsU64,    true } },
+         { InstrId::cpu_cvt_l_s,   { UnaryOpType::ConvertLFromS,  Operand::FdU64,    Operand::Fs,       true, true } },
++        { InstrId::cpu_trunc_l_s, { UnaryOpType::TruncateLFromS, Operand::FdU64,    Operand::Fs,       true } },
++        { InstrId::cpu_trunc_l_d, { UnaryOpType::TruncateLFromD, Operand::FdU64,    Operand::FsDouble, true } },
+         { InstrId::cpu_trunc_w_s, { UnaryOpType::TruncateWFromS, Operand::FdU32L,   Operand::Fs,       true } },
+         { InstrId::cpu_trunc_w_d, { UnaryOpType::TruncateWFromD, Operand::FdU32L,   Operand::FsDouble, true } },
+         { InstrId::cpu_round_w_s, { UnaryOpType::RoundWFromS,    Operand::FdU32L,   Operand::Fs,       true } },

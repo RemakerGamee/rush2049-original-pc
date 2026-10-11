@@ -1,0 +1,108 @@
+--- a/rt64/src/render/rt64_framebuffer_renderer.cpp
++++ b/rt64/src/render/rt64_framebuffer_renderer.cpp
+@@ -1,3 +1,4 @@
++#include "rush_circuit_flow.h"
+ //
+ // RT64
+ //
+@@ -233,6 +234,7 @@
+             }
+             
+             interop::GPUTile &gpuTile = dstGPUTiles[i];
++            gpuTile.flags.value &= 0xffu; // Clear private effect bits when a tile is reused.
+             if (callTile.tileCopyUsed) {
+                 const auto &it = fbManager->tileCopies.find(callTile.tmemHashOrID);
+                 if (it != fbManager->tileCopies.end()) {
+@@ -272,6 +274,14 @@
+                 gpuTile.flags.rawTMEM = !textureReplaced && callTile.rawTMEM;
+                 gpuTile.flags.hasMipmaps = hasMipmaps;
+                 gpuTile.flags.shiftedByHalf = shiftedByHalf;
++                static const bool rushFlowEnabled = [] {
++                    const char* value = std::getenv("RUSH_REMASTER_CIRCUIT_GLOW");
++                    return value && value[0] == '1' && value[1] == '\0';
++                }();
++                if (rushFlowEnabled) {
++                    auto effect = rushCircuitTileFlags.find(callTile.tmemHashOrID);
++                    if (effect != rushCircuitTileFlags.end()) gpuTile.flags.value |= effect->second;
++                }
+             }
+         }
+     }
+--- a/rt64/src/shaders/TextureSampler.hlsli
++++ b/rt64/src/shaders/TextureSampler.hlsli
+@@ -355,5 +355,19 @@
+         textureColor.a = (cvgModulo & 0x4) ? 1.0f : 0.0f;
+     }
+     
++    // Isolated Rush remaster: illuminate only the original alpha-cutout circuit traces.
++    // The wheel, opaque background, lettering, cars and all unrelated textures are unchanged.
++    if ((gpuTile.flags & 0x100u) != 0u && textureColor.a < 0.5f) {
++        const float2 tileOrigin = float2((gpuTile.flags & 0x200u) ? 256.0f : 0.0f,
++                                       float((gpuTile.flags >> 10u) & 0xffu));
++        const float2 originalUV = uvCoord / gpuTile.tcScale + tileOrigin;
++        const float2 upright = float2(originalUV.x, 220.0f - originalUV.y);
++        const float radius = length((upright - float2(160.0f, 110.0f)) / 190.0f);
++        const float travel = frac(float(FrParams.frameCount) / 90.0f) * 1.15f;
++        const float band = (radius - travel) / 0.065f;
++        const float pulse = exp(-band * band);
++        textureColor.rgb = saturate(float3(0.035f, 0.16f, 0.37f) + pulse * float3(0.77f, 0.78f, 0.63f));
++        textureColor.a = 1.0f;
++    }
+     return textureColor;
+ }
+\ No newline at end of file
+--- a/rt64/CMakeLists.txt
++++ b/rt64/CMakeLists.txt
+@@ -17,21 +17,22 @@
+     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+ endif()
+ 
++set(RUSH_FLOW_SHADER_DEPENDENCY "${CMAKE_CURRENT_SOURCE_DIR}/src/shaders/TextureSampler.hlsli")
+ function(preprocess INFILE OUTFILE OPTIONS)
+     if (CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+         if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+             add_custom_command(OUTPUT ${OUTFILE}
+                 COMMAND clang -x c -E -P ${INFILE} -o ${OUTFILE} ${OPTIONS}
+-                DEPENDS ${INFILE})
++                DEPENDS ${INFILE} ${RUSH_FLOW_SHADER_DEPENDENCY})
+         else()
+             add_custom_command(OUTPUT ${OUTFILE}
+                 COMMAND ${CMAKE_CXX_COMPILER} /Zs /EP ${INFILE} ${OPTIONS} > ${OUTFILE}
+-                DEPENDS ${INFILE})
++                DEPENDS ${INFILE} ${RUSH_FLOW_SHADER_DEPENDENCY})
+         endif()
+     else()
+         add_custom_command(OUTPUT ${OUTFILE}
+             COMMAND ${CMAKE_CXX_COMPILER} -x c -E -P ${INFILE} -o ${OUTFILE} ${OPTIONS}
+-            DEPENDS ${INFILE})
++            DEPENDS ${INFILE} ${RUSH_FLOW_SHADER_DEPENDENCY})
+     endif()
+ endfunction()
+ 
+@@ -116,7 +117,7 @@
+ function(build_shader_spirv_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
+     add_custom_command(OUTPUT ${OUTNAME}.spv
+         COMMAND ${DXC} ${DXC_SPV_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.spv
+-        DEPENDS ${FILENAME})
++        DEPENDS ${FILENAME} ${RUSH_FLOW_SHADER_DEPENDENCY})
+     add_custom_command(OUTPUT ${OUTNAME}.spirv.c
+         COMMAND file_to_c ${OUTNAME}.spv ${TARGET_NAME}BlobSPIRV ${OUTNAME}.spirv.c ${OUTNAME}.spirv.h
+         DEPENDS ${OUTNAME}.spv file_to_c
+@@ -127,7 +128,7 @@
+ function(build_shader_dxil_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
+     add_custom_command(OUTPUT ${OUTNAME}.dxil
+         COMMAND ${DXC} ${DXC_DXIL_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.dxil
+-        DEPENDS ${FILENAME})
++        DEPENDS ${FILENAME} ${RUSH_FLOW_SHADER_DEPENDENCY})
+     add_custom_command(OUTPUT ${OUTNAME}.dxil.c
+         COMMAND file_to_c ${OUTNAME}.dxil ${TARGET_NAME}BlobDXIL ${OUTNAME}.dxil.c ${OUTNAME}.dxil.h
+         DEPENDS ${OUTNAME}.dxil file_to_c
+@@ -138,7 +139,7 @@
+ function(build_shader_msl_impl TARGETOBJ FILENAME TARGET_NAME OUTNAME)
+     add_custom_command(OUTPUT ${OUTNAME}.spv
+             COMMAND ${DXC} ${DXC_SPV_OPTS} ${ARGN} ${FILENAME} /Fo ${OUTNAME}.spv
+-            DEPENDS ${FILENAME})
++            DEPENDS ${FILENAME} ${RUSH_FLOW_SHADER_DEPENDENCY})
+     add_custom_command(OUTPUT ${OUTNAME}.metal
+             COMMAND spirv_cross_msl ${OUTNAME}.spv ${OUTNAME}.metal
+             DEPENDS ${OUTNAME}.spv spirv_cross_msl)

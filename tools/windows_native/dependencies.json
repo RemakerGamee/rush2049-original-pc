@@ -1,0 +1,52 @@
+{
+  "N64ModernRuntime": {
+    "pin": "cdf5abbd5026fef5c364c676e4667c45e42b6863",
+    "reviewed_paths": [
+      "librecomp/CMakeLists.txt",
+      "librecomp/src/ai.cpp",
+      "librecomp/src/cont.cpp",
+      "librecomp/src/pi.cpp",
+      "librecomp/src/ultra_translation.cpp",
+      "librecomp/src/vi.cpp",
+      "ultramodern/CMakeLists.txt",
+      "ultramodern/include/ultramodern/input.hpp",
+      "ultramodern/include/ultramodern/ultramodern.hpp",
+      "ultramodern/src/events.cpp",
+      "ultramodern/src/mesgqueue.cpp",
+      "ultramodern/src/threadqueue.cpp",
+      "ultramodern/src/threads.cpp",
+      "ultramodern/src/timer.cpp",
+      "ultramodern/src/scheduling.cpp"
+    ],
+    "scope": "tracked text sources; RT64 limited to the three documented modified implementation headers/sources",
+    "added_headers": {
+      "ultramodern/include/ultramodern/runtime_clock.hpp": "runtime_clock.hpp"
+    },
+    "completion_patch": "completion-dependency.patch"
+  },
+  "N64Recomp": {
+    "pin": "ffb39cdad1da5de07eaaa48bd1db4a89a7986771",
+    "reviewed_paths": [
+      "src/cgenerator.cpp",
+      "src/operations.cpp"
+    ],
+    "scope": "tracked text sources; RT64 limited to the three documented modified implementation headers/sources"
+  },
+  "rt64": {
+    "pin": "43373749dac9bbc1b653e6a02aed40a9e1783bed",
+    "reviewed_paths": [
+      "src/hle/rt64_state.cpp"
+    ],
+    "scope": "tracked text sources; RT64 limited to the three documented modified implementation headers/sources"
+  },
+  "nested": {
+    "plume": {
+      "pin": "d890ac899e505fb30040e037a4037cdeca68f033",
+      "patch": "plume-native.patch"
+    },
+    "dxc": {
+      "pin": "cc15e715ee378a4f675b335bd1071ff105873fc8",
+      "patch": "dxc-native.patch"
+    }
+  }
+}
