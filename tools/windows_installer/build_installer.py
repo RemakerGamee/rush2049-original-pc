@@ -15,7 +15,7 @@ def command(args,log):
         result=subprocess.run([str(x) for x in args],stdout=stream,stderr=subprocess.STDOUT)
     if result.returncode: raise RuntimeError('Build failed; inspect '+str(log))
 
-def resources(directory,payload,remastered=False,icon=None):
+def resources(directory,payload,remastered=False,icon=None,remaster_only=False):
     directory.mkdir(parents=True)
     entries=[];rc=['#include <windows.h>\n']
     if icon is None: raise ValueError('A maintainer-supplied Windows ICO is required')
@@ -32,7 +32,8 @@ def resources(directory,payload,remastered=False,icon=None):
         rc.append(f'{index} RCDATA "{path.as_posix()}"\n')
     header='#pragma once\nnamespace payload { struct Entry { int id; const wchar_t* path; const char* sha256; }; inline constexpr Entry files[]={\n'
     header+=''.join('{'+str(row['id'])+',L'+json.dumps(row['path'])+','+json.dumps(row['sha256'])+'},\n' for row in entries)
-    header+='}; inline constexpr bool remastered='+('true' if remastered else 'false')+'; inline constexpr wchar_t edition[]=L"Rush 2049 '+('Remastered 4x' if remastered else 'Original PC')+'"; }\n'
+    if remaster_only and not remastered:raise ValueError('Remaster-only requires a texture pack')
+    header+='}; inline constexpr bool remastered='+('true' if remastered else 'false')+'; inline constexpr bool remaster_only='+('true' if remaster_only else 'false')+'; inline constexpr wchar_t edition[]=L"Rush 2049 '+('Remastered libultraship' if remaster_only else 'Remastered 4x' if remastered else 'Original PC')+'"; }\n'
     (directory/'payload_table.hpp').write_text(header)
     (directory/'setup.rc').write_text(''.join(rc))
     return entries
@@ -40,8 +41,10 @@ def resources(directory,payload,remastered=False,icon=None):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--native-root',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--source-archive',required=True,type=Path);parser.add_argument('--remaster-pack',type=Path)
     parser.add_argument('--icon',required=True,type=Path,help='Maintainer-supplied multi-size Windows ICO; kept outside source Git')
+    parser.add_argument('--remaster-only',action='store_true',help='Launch the remaster directly without the visual-edition chooser')
     args=parser.parse_args()
     native=args.native_root.resolve();output=args.output.resolve()
+    if args.remaster_only and not args.remaster_pack:raise ValueError('--remaster-only requires --remaster-pack')
     if not args.icon.is_file() or args.icon.read_bytes()[:4] != b'\x00\x00\x01\x00': raise ValueError('Valid Windows ICO required')
     with zipfile.ZipFile(args.source_archive) as source_zip:
         if source_zip.testzip() is not None or 'tools/windows_native/lus-component.cmake' not in source_zip.namelist():
@@ -80,11 +83,11 @@ def main():
     shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.0.zip')
     shutil.copyfile(ROOT/'COPYING',payload/'COPYING')
     shutil.copyfile(ROOT/'README.md',payload/'README.md')
-    table=resources(output/'launcher-resources',payload,bool(args.remaster_pack),args.icon)
+    table=resources(output/'launcher-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only)
     command(['cmake','-S',HERE,'-B',output/'launcher-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_RESOURCE_DIR='+str(output/'launcher-resources')],output/'launcher-configure.log')
     command(['cmake','--build',output/'launcher-build','--config','Release','--parallel','2'],output/'launcher-build.log')
     shutil.copyfile(output/'launcher-build/Release/Rush2049Original.exe',payload/'Rush2049Original.exe')
-    table=resources(output/'setup-resources',payload,bool(args.remaster_pack),args.icon)
+    table=resources(output/'setup-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only)
     command(['cmake','-S',HERE,'-B',output/'setup-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_BUILD_SETUP=ON','-DRUSH_RESOURCE_DIR='+str(output/'setup-resources')],output/'setup-configure.log')
     command(['cmake','--build',output/'setup-build','--config','Release','--parallel','2'],output/'setup-build.log')
     installer=output/('Rush2049-Remastered-PC-v0.3.0-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.0-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)

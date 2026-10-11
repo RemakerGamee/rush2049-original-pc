@@ -11,11 +11,12 @@ Choose the version you want:
 | Windows PC version | Public downloads | Original / Remaster choices |
 | --- | --- | --- |
 | **Without libultraship / Dear ImGui — v0.2.0** | [Download the original SDL2/RT64 version](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) | Separate Original and Remastered EXE installers; native Windows settings menus. |
-| **With libultraship / Dear ImGui — v0.3.0** | [Download the libultraship / ImGui version](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0) | Original-only installer or Original + Remaster installer with a choice before play. |
+| **Remastered with libultraship / Dear ImGui — v0.3.0** | [Download the Remastered libultraship package](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.0/Rush2049-Remastered-Libultraship-Package.zip) | Launches Remaster directly; no Original/Remaster chooser. |
+| **Original with libultraship / Dear ImGui — v0.3.0** | [Download the Original libultraship package](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.0/Rush2049-Libultraship-Original-Package.zip) | Original visuals only. |
 
 Both versions require your own supported US Nintendo 64 ROM. The instructions and settings below describe **v0.3.0**; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts.
 
-The **Original installer** is smaller and uses original ROM textures. The **Original + Remaster installer** includes the reviewed 5,957-texture pack and asks you to choose **Original** or **Remaster** before play. Original bypasses the replacement pack and remastered circuit lighting; Remaster enables them. Both choices use RT64 and the same settings, controller mappings and retained saves.
+The **Original installer** is smaller and uses original ROM textures. The dedicated **Remastered libultraship installer** includes the reviewed 5,957-texture pack and launches directly with remastered textures and circuit lighting. Both use RT64 and the same settings, controller mappings and retained saves. Historical combined downloads remain available in Releases.
 
 Run Setup, browse to your ROM, choose a new installation folder and install. Open the desktop shortcut or `Rush2049Original.exe`. If your ROM moves or changes, select the valid file again. No Python, Git, compiler, driver installation or service changes are needed for players. Use 64-bit Windows and existing Vulkan-capable graphics hardware/drivers.
 
