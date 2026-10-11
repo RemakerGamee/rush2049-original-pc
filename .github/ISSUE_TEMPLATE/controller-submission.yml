@@ -1,0 +1,47 @@
+name: Controller mapping submission
+description: Send an unlisted controller name and input mappings for review.
+title: "[Controller submission] "
+assignees:
+  - RemakerGamee
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the public Controller Submissions review area. Your mapping stays pending until a maintainer approves or declines it. Do not attach ROMs, saves, logs, tokens or device serial numbers.
+  - type: input
+    id: controller-name
+    attributes:
+      label: Controller name
+      description: Include the controller or adapter brand and model.
+    validations:
+      required: true
+  - type: dropdown
+    id: controller-type
+    attributes:
+      label: Controller type
+      options:
+        - PS3
+        - PS4
+        - Xbox 360
+        - Xbox One wired
+        - Xbox One wireless
+        - N64 wired
+        - N64 wireless / USB dongle
+    validations:
+      required: true
+  - type: textarea
+    id: mapping
+    attributes:
+      label: Controller mapping package
+      description: Rush fills this automatically. If the package was copied to your clipboard, paste it here.
+      render: json
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: Test results
+      description: Tell us which buttons, stick directions, reconnects and game modes you tested, and any remaining problems.
+    validations:
+      required: true
+
