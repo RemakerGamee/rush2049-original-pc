@@ -42,6 +42,11 @@ target_link_directories(RushControllerSettingsCheck PRIVATE ${SDLROOT}/lib/x64)
 target_link_libraries(RushControllerSettingsCheck PRIVATE SDL2)
 target_compile_definitions(RushControllerSettingsCheck PRIVATE SDL_MAIN_HANDLED)
 
+add_executable(RushCheatSettingsCheck tools/cheat_settings_check.cpp)
+target_include_directories(RushCheatSettingsCheck PRIVATE tools rt64/src ${SDLROOT}/include)
+target_link_directories(RushCheatSettingsCheck PRIVATE ${SDLROOT}/lib/x64)
+target_link_libraries(RushCheatSettingsCheck PRIVATE SDL2 user32)
+
 # Local-only linker map resolves native crash offsets; never publish the map.
 target_link_options(RushWindowsRT64 PRIVATE /MAP)
 

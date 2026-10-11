@@ -36,6 +36,7 @@ uint64_t completed_bytes() const { return 0; }
 #include "keyboard_input.hpp"
 #include "controller_input.hpp"
 #include "pc_menu.hpp"
+#include "cheat_native_state.hpp"
 #include <memory>
 
 extern ultramodern::renderer::callbacks_t rush_renderer_callbacks();
@@ -394,6 +395,26 @@ extern "C" void game_loop(uint8_t* rdram, recomp_context* ctx) {
     static unsigned calls = 0;
     if (check_framebuffer && calls++ < 2) std::puts("GUEST_MAIN_LOOP_ENTERED");
     rush_real_game_loop(rdram, ctx);
+}
+// Apply host selections on the retail main-menu thread before its input/render.
+extern "C" void rush_real_overlay_a_func_80390418(uint8_t*, recomp_context*);
+extern "C" void overlay_a_func_80390418(uint8_t* rdram,recomp_context* ctx) {
+    static rush::cheats::NativeState state;
+    if(rush::pc::cheatSettings) {
+        struct Memory {
+            uint8_t* rdram;
+            void byte(uint32_t a,uint8_t v){MEM_B(0,int32_t(a))=v;}
+            void half(uint32_t a,uint16_t v){MEM_H(0,int32_t(a))=v;}
+        } memory{rdram};
+        const auto [prefs,revision]=rush::pc::cheatSettings->snapshot();
+        if(state.apply(memory,prefs,revision))std::printf("CHEAT_SETTINGS_DIRECT_APPLIED: revision=%llu menu=%d selected=%u\n",(unsigned long long)revision,prefs.show,unsigned(std::count(prefs.enabled.begin(),prefs.enabled.end(),true)));
+    }
+    rush_real_overlay_a_func_80390418(rdram,ctx);
+}
+extern "C" void rush_real_overlay_a_func_8039C910(uint8_t*,recomp_context*);
+extern "C" void overlay_a_func_8039C910(uint8_t* rdram,recomp_context* ctx) {
+    rush_real_overlay_a_func_8039C910(rdram,ctx);
+    if(rush::pc::cheatSettings&&rush::pc::cheatSettings->desired())MEM_H(0,int32_t(0x801164CCu))=rush::cheats::fog_menu_value(uint8_t(MEM_BU(0,int32_t(0x801427A0u))));
 }
 extern "C" void rush_real_game_mode_handler(uint8_t*, recomp_context*);
 extern "C" void game_mode_handler(uint8_t* rdram, recomp_context* ctx) {
@@ -790,7 +811,6 @@ int wmain(int argc, wchar_t** wide_argv) {
         };
         cfg.input_callbacks.get_input = [](int port, uint16_t* buttons, float* x, float* y) {
             if (!controller_input || !controller_input->get_input(port, buttons, x, y)) return false;
-            if(port==0){uint16_t cheat_buttons=0;if(rush::pc::playback.sample(steady_ms(),cheat_buttons)){*buttons=cheat_buttons;*x=*y=0;}}
             if(port == 0 && steady_ms()<native_script_deadline.load()) {
                 *buttons|=native_script_buttons.load();
                 *x=native_script_x.load(); *y=native_script_y.load();

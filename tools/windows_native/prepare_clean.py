@@ -67,7 +67,8 @@ def prepare(destination,donor,inputs,rom):
         shutil.copytree(inputs/folder,source/folder,ignore=shutil.ignore_patterns('*.o','*.obj','*.a','*.lib','build','CMakeFiles'))
     shutil.copy2(PACKAGE/'jet_sound_gain.h', source/'tools/jet_sound_gain.h')
     shutil.copy2(PACKAGE/'rom_identity.hpp', source/'tools/rom_identity.hpp')
-    shutil.copy2(PACKAGE/'pc_menu.hpp', source/'tools/pc_menu.hpp')
+    for name in ('pc_menu.hpp','cheat_visibility.hpp','cheat_native_state.hpp','cheat_settings_check.cpp'):
+        shutil.copy2(PACKAGE/name,source/'tools'/name)
     from remaster_guest import apply_remaster
     apply_remaster(source/'RecompiledFuncs-probe')
     (source/'recomp-input').mkdir()
