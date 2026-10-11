@@ -28,4 +28,3 @@ For approval, verify the declared controller type against the input backend, val
 For decline, rename the issue to **[Controller declined] Name**, explain the decision, and close it as not planned. Request corrections while leaving the issue pending when appropriate.
 
 Only a maintainer's review and explicit preset integration can add a default mapping to the game. Issue titles and submitted `reviewStatus` values do not grant approval, and the game never downloads or installs an unreviewed mapping automatically.
-

@@ -8,7 +8,8 @@ set(RT64_STATIC ON CACHE BOOL "" FORCE)
 set(SDLROOT "${CMAKE_CURRENT_SOURCE_DIR}/rt64/src/contrib/mupen64plus-win32-deps/SDL2-2.26.3")
 add_subdirectory(N64ModernRuntime)
 add_subdirectory(rt64)
-file(GLOB GUEST RecompiledFuncs-probe/funcs_*.c)
+set(RUSH_GUEST_DIRECTORY RecompiledFuncs-probe CACHE STRING "Private generated game source directory")
+file(GLOB GUEST ${RUSH_GUEST_DIRECTORY}/funcs_*.c)
 add_library(rush_guest OBJECT ${GUEST})
 target_include_directories(rush_guest PRIVATE N64Recomp/include RecompiledFuncs-probe compile-check)
 target_compile_options(rush_guest PRIVATE /FI${CMAKE_CURRENT_SOURCE_DIR}/compile-check/external_declarations.h /fp:strict /O2)
@@ -42,12 +43,13 @@ target_link_directories(RushControllerSettingsCheck PRIVATE ${SDLROOT}/lib/x64)
 target_link_libraries(RushControllerSettingsCheck PRIVATE SDL2)
 target_compile_definitions(RushControllerSettingsCheck PRIVATE SDL_MAIN_HANDLED)
 
-add_executable(RushCheatSettingsCheck tools/cheat_settings_check.cpp)
-target_include_directories(RushCheatSettingsCheck PRIVATE tools rt64/src ${SDLROOT}/include)
-target_link_directories(RushCheatSettingsCheck PRIVATE ${SDLROOT}/lib/x64)
-target_link_libraries(RushCheatSettingsCheck PRIVATE SDL2 user32)
-
 # Local-only linker map resolves native crash offsets; never publish the map.
 target_link_options(RushWindowsRT64 PRIVATE /MAP)
 
 target_include_directories(RushWindowsRT64 PRIVATE tools N64ModernRuntime/ultramodern/include)
+
+include(tools/lus-component.cmake)
+
+add_executable(RushCheatOptionsCheck tools/cheat_options_check.cpp)
+target_include_directories(RushCheatOptionsCheck PRIVATE tools)
+target_link_libraries(RushCheatOptionsCheck PRIVATE user32)

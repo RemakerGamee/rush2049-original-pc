@@ -3,6 +3,7 @@
 #define _UNICODE
 #include <Windows.h>
 #include <commdlg.h>
+#include <commctrl.h>
 #include <shlobj.h>
 #include <shellapi.h>
 #include <tlhelp32.h>
@@ -15,10 +16,25 @@
 #include "payload_table.hpp"
 
 namespace fs=std::filesystem;
-static constexpr wchar_t version[]=L"0.2.0";
+static constexpr wchar_t version[]=L"0.3.0";
 static HINSTANCE instance;
 static fs::path rootPath,dataPath,romPath;
 static bool cli=false;
+static int visualEdition=-1;
+static bool choose_edition() {
+    if(visualEdition>=0)return true;
+    if(!payload::remastered){visualEdition=0;return true;}
+    const TASKDIALOG_BUTTON buttons[]={{100,L"Original\nOriginal game textures"},{101,L"Remaster\nRemastered textures and menu lighting"}};
+    TASKDIALOGCONFIG dialog{sizeof(dialog)};
+    dialog.hInstance=instance;dialog.dwFlags=TDF_USE_COMMAND_LINKS|TDF_ALLOW_DIALOG_CANCELLATION;
+    dialog.pszWindowTitle=L"Rush 2049";dialog.pszMainInstruction=L"Choose your version";
+    dialog.pszContent=L"Both versions require your own supported N64 ROM and retain your saves and controller settings.";
+    dialog.cButtons=2;dialog.pButtons=buttons;dialog.nDefaultButton=101;
+    int selected=IDCANCEL;
+    if(FAILED(TaskDialogIndirect(&dialog,&selected,nullptr,nullptr)))throw std::runtime_error("Cannot open version selection.");
+    if(selected!=100&&selected!=101)return false;
+    visualEdition=selected==101?1:0;return true;
+}
 
 static fs::path known(REFKNOWNFOLDERID id) {
     PWSTR path=nullptr;if(FAILED(SHGetKnownFolderPath(id,0,nullptr,&path)))throw std::runtime_error("Cannot locate your Windows user folder.");
@@ -108,7 +124,7 @@ static void verify_payload(const fs::path& app) {
 static void shortcut(const fs::path& app) {
     IShellLinkW* link=nullptr;if(FAILED(CoCreateInstance(CLSID_ShellLink,nullptr,CLSCTX_INPROC_SERVER,IID_PPV_ARGS(&link))))return;
     link->SetPath((app/L"Rush2049Original.exe").c_str());link->SetWorkingDirectory(app.c_str());link->SetDescription(payload::edition);
-    IPersistFile* file=nullptr;if(SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&file)))){const auto path=known(FOLDERID_Desktop)/(payload::remastered?L"Rush 2049 Remastered v0.2.lnk":L"Rush 2049 Original v0.2.lnk");if(!fs::exists(path))file->Save(path.c_str(),TRUE);file->Release();}link->Release();
+    IPersistFile* file=nullptr;if(SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&file)))){const auto path=known(FOLDERID_Desktop)/(payload::remastered?L"Rush 2049 Remastered v0.3.lnk":L"Rush 2049 Original v0.3.lnk");if(!fs::exists(path))file->Save(path.c_str(),TRUE);file->Release();}link->Release();
 }
 static void install_app(const fs::path& destination,const fs::path& rom,const fs::path& data,bool desktop) {
     // ROM gate precedes every installation/data-directory write.
@@ -168,13 +184,17 @@ static int launch(const fs::path& app,const fs::path& data,bool preflight) {
         romPath=pick_rom(nullptr);if(romPath.empty())return 0;
         validated=std::make_unique<rush::rom::File>(romPath);save_rom(data,romPath);
     }
+    if(visualEdition==1&&!payload::remastered)throw std::runtime_error("Remaster textures are not included in this installation.");
     if(preflight)return 0;
+    if(!choose_edition())return 0;
     Session session(data);reject_other_game();
     // Remove inherited diagnostic overrides. The chosen external ROM is the only input.
     LPWCH environment=GetEnvironmentStringsW();std::vector<std::wstring> remove;
     if(environment){for(auto p=environment;*p;p+=wcslen(p)+1){std::wstring row(p);auto eq=row.find(L'=');if(eq!=std::wstring::npos){const auto name=row.substr(0,eq);if(name.starts_with(L"RUSH_")||name==L"VK_DRIVER_FILES"||name==L"VK_ICD_FILENAMES")remove.push_back(name);}}FreeEnvironmentStringsW(environment);}
     for(const auto& name:remove)SetEnvironmentVariableW(name.c_str(),nullptr);
-    if(payload::remastered){SetEnvironmentVariableW(L"RUSH_REMASTER_TEXTURE_PACK",(app/L"remaster-pack").c_str());SetEnvironmentVariableW(L"RUSH_REMASTER_CIRCUIT_GLOW",L"1");}
+    if(visualEdition==1){SetEnvironmentVariableW(L"RUSH_REMASTER_TEXTURE_PACK",(app/L"remaster-pack").c_str());SetEnvironmentVariableW(L"RUSH_REMASTER_CIRCUIT_GLOW",L"1");}
+    SetEnvironmentVariableW(L"RUSH_LUS_IMGUI",L"1");
+    SetEnvironmentVariableW(L"RUSH_OPTIONS_CONFIG",(data/L"options.json").c_str());
     SetEnvironmentVariableW(L"RUSH_CONTROLLER_PAK",(data/L"controller.mpk").c_str());SetEnvironmentVariableW(L"RUSH_INPUT_CONFIG",(data/L"input.cfg").c_str());
     SECURITY_ATTRIBUTES security{sizeof(security),nullptr,TRUE};
     HANDLE log=CreateFileW((data/L"last-session.log").c_str(),GENERIC_WRITE,FILE_SHARE_READ,&security,CREATE_ALWAYS,FILE_ATTRIBUTE_NORMAL,nullptr);
@@ -230,10 +250,10 @@ int WINAPI wWinMain(HINSTANCE app,HINSTANCE,LPWSTR,int show) {
     try {
         dataPath=known(FOLDERID_LocalAppData)/L"Rush2049Original/PlayerData";rootPath=self().parent_path();
 #ifdef RUSH_SETUP
-        rootPath=known(FOLDERID_LocalAppData)/(payload::remastered?L"Rush2049Original/App-Remastered-v0.2.0":L"Rush2049Original/App-v0.2.0");
+        rootPath=known(FOLDERID_LocalAppData)/(payload::remastered?L"Rush2049Original/App-Remastered-v0.3.0":L"Rush2049Original/App-v0.3.0");
 #endif
         bool explicitData=false;
-        for(int i=1;i<argc;++i){std::wstring a=argv[i];if(a==L"--install"){installMode=true;cli=true;}else if(a==L"--preflight"){preflight=true;cli=true;}else if(a==L"--no-shortcut")noShortcut=true;else if((a==L"--rom"||a==L"--directory"||a==L"--data-dir") && i+1<argc){const fs::path value=fs::absolute(argv[++i]).lexically_normal();if(a==L"--rom")romPath=value;else if(a==L"--directory")rootPath=value;else {dataPath=value;explicitData=true;}}else throw std::runtime_error("Unknown launch option.");}
+        for(int i=1;i<argc;++i){std::wstring a=argv[i];if(a==L"--edition" && i+1<argc){std::wstring edition=argv[++i]; if(edition==L"original")visualEdition=0;else if(edition==L"remaster")visualEdition=1;else throw std::runtime_error("Choose original or remaster.");}else if(a==L"--install"){installMode=true;cli=true;}else if(a==L"--preflight"){preflight=true;cli=true;}else if(a==L"--no-shortcut")noShortcut=true;else if((a==L"--rom"||a==L"--directory"||a==L"--data-dir") && i+1<argc){const fs::path value=fs::absolute(argv[++i]).lexically_normal();if(a==L"--rom")romPath=value;else if(a==L"--directory")rootPath=value;else {dataPath=value;explicitData=true;}}else throw std::runtime_error("Unknown launch option.");}
         LocalFree(argv);argv=nullptr;
 #ifdef RUSH_SETUP
         if(installMode){if(romPath.empty())throw std::runtime_error("A supported original US ROM is required BEFORE installation.");install_app(rootPath,romPath,dataPath,!noShortcut);CoUninitialize();return 0;}

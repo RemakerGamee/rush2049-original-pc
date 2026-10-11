@@ -36,6 +36,9 @@ def resources(directory,payload,remastered=False):
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--native-root',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--source-archive',required=True,type=Path);parser.add_argument('--remaster-pack',type=Path);args=parser.parse_args()
     native=args.native_root.resolve();output=args.output.resolve()
+    with zipfile.ZipFile(args.source_archive) as source_zip:
+        if source_zip.testzip() is not None or 'tools/windows_native/lus-component.cmake' not in source_zip.namelist():
+            raise ValueError('Complete reviewed integration source archive required')
     if output.exists():raise ValueError('Choose a new output directory')
     output.mkdir(parents=True);payload=output/'payload';payload.mkdir()
     for name in ('RushWindowsRT64.exe','SDL2.dll','dxcompiler.dll','dxil.dll'):
@@ -52,6 +55,8 @@ def main():
             if notice.is_file() and notice.stat().st_size and notice.name.upper().startswith(('LICENSE','COPYING','NOTICE')):
                 destination=payload/'notices'/dependency/notice.relative_to(source);destination.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(notice,destination)
     (payload/'notices/Microsoft-VC-Runtime.txt').write_text('Microsoft Visual C++ runtime '+crt.parent.parent.name+'\nApp-local redistributable DLLs from the licensed Visual Studio installation.\nhttps://aka.ms/vs/18/redistribution\nhttps://learn.microsoft.com/cpp/windows/redistributing-visual-cpp-files\n')
+    for notice in (native/'build/notices').glob('*.txt'):
+        target=payload/'notices'/notice.name;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(notice,target)
     (payload/'defaults').mkdir();shutil.copyfile(ROOT/'tools/release/default-input.cfg',payload/'defaults/input.cfg')
     if args.remaster_pack:
         pack=args.remaster_pack.resolve();config=json.loads((pack/'rt64.json').read_text(encoding='utf-8'))
@@ -65,7 +70,7 @@ def main():
             source=(pack/relative).resolve();assert source.is_relative_to(pack) and not (pack/relative).is_symlink()
             assert source.read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
             target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target);hashes.add(digest);paths.add(str(relative))
-    shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.2.0.zip')
+    shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.0.zip')
     shutil.copyfile(ROOT/'COPYING',payload/'COPYING')
     shutil.copyfile(ROOT/'README.md',payload/'README.md')
     table=resources(output/'launcher-resources',payload,bool(args.remaster_pack))
@@ -75,8 +80,8 @@ def main():
     table=resources(output/'setup-resources',payload,bool(args.remaster_pack))
     command(['cmake','-S',HERE,'-B',output/'setup-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_BUILD_SETUP=ON','-DRUSH_RESOURCE_DIR='+str(output/'setup-resources')],output/'setup-configure.log')
     command(['cmake','--build',output/'setup-build','--config','Release','--parallel','2'],output/'setup-build.log')
-    installer=output/('Rush2049-Remastered-PC-v0.2.0-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.2.0-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
-    manifest={'version':'v0.2.0','edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
+    installer=output/('Rush2049-Remastered-PC-v0.3.0-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.0-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
+    manifest={'version':'v0.3.0','edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
     (output/'package-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     (output/'SHA256SUMS.txt').write_text(manifest['installer_sha256']+'  '+installer.name+'\n')
     print(json.dumps({'installer':str(installer),'size':installer.stat().st_size,'sha256':manifest['installer_sha256'],'payload_files':len(table)}))

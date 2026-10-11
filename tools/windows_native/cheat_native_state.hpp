@@ -29,6 +29,7 @@ class NativeState {
  uint64_t revision_=0;
  bool owned_=false;
 public:
+ void invalidate(){revision_=0;}
  template<class Memory> bool apply(Memory& m,const Preferences& p,uint64_t revision) {
   if(revision==revision_)return false;
   revision_=revision;

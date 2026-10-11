@@ -1,6 +1,7 @@
 #include "recomp.h"
 #include "../N64ModernRuntime/ultramodern/include/ultramodern/ultra64.h"
 #include "si_protocol.hpp"
+#include "controller-accessories.hpp"
 #include <mutex>
 #include <cstring>
 
@@ -28,7 +29,7 @@ std::array<rush_si::Port, 4> snapshot(bool poll, uint8_t* rdram) {
     std::array<rush_si::Port, 4> result{};
     for (unsigned i = 0; i < 4; ++i) {
         result[i].connected = status[i].err_no == 0;
-        result[i].memory = i == 0 && result[i].connected ? rush_pak::controller_one() : nullptr;
+        result[i].memory = i == 0 && result[i].connected && rush::accessories::mode[0].load()==0 ? rush_pak::controller_one() : nullptr;
         result[i].rumble = result[i].connected && osMotorInit(scratch, 0, scratch_address + 64, i) == 0;
         if (poll && pads[i].err_no == 0) {
             result[i].buttons = pads[i].button;

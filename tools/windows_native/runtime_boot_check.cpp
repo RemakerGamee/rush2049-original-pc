@@ -1,3 +1,10 @@
+#include <memory>
+#include "cheat_native_state.hpp"
+static std::unique_ptr<rush::cheats::Visibility> cheat_visibility;
+#ifdef RUSH_ENABLE_LUS_IMGUI
+#include "lus-imgui-options.hpp"
+#include "ultramodern/config.hpp"
+#endif
 #include <algorithm>
 #include "rom_identity.hpp"
 #include "recomp_overlays.inl"
@@ -35,8 +42,10 @@ uint64_t completed_bytes() const { return 0; }
 };
 #include "keyboard_input.hpp"
 #include "controller_input.hpp"
-#include "pc_menu.hpp"
-#include "cheat_native_state.hpp"
+#include "controller-accessories.hpp"
+#ifdef RUSH_ENABLE_LUS_IMGUI
+#include "lus-imgui-store.hpp"
+#endif
 #include <memory>
 
 extern ultramodern::renderer::callbacks_t rush_renderer_callbacks();
@@ -390,31 +399,44 @@ extern "C" void osSetEventMesg_recomp(uint8_t* rdram, recomp_context* ctx) {
     rush_real_osSetEventMesg_recomp(rdram, ctx);
 }
 extern "C" void rush_real_osStopThread_recomp(uint8_t*, recomp_context*);
+// Publish host choices only on the guest game thread. Title/attract frames
+// consume revisions before Start; menu entry reapplies after retail resets.
+static rush::cheats::NativeState native_cheat_state;
+static void apply_cheat_preferences(uint8_t* rdram,bool refresh=false) {
+    if(!cheat_visibility)return;
+    if(refresh)native_cheat_state.invalidate();
+    struct Memory {
+        uint8_t* rdram;
+        void byte(uint32_t a,uint8_t value){MEM_B(0,int32_t(a))=value;}
+        void half(uint32_t a,uint16_t value){MEM_H(0,int32_t(a))=value;}
+    } memory{rdram};
+    const auto [prefs,revision]=cheat_visibility->snapshot();
+    if(native_cheat_state.apply(memory,prefs,revision))
+        std::printf("CHEAT_SETTINGS_DIRECT_APPLIED: revision=%llu menu=%d selected=%u; title/game thread; no input playback\n",
+            (unsigned long long)revision,prefs.show,
+            unsigned(std::count(prefs.enabled.begin(),prefs.enabled.end(),true)));
+}
+extern "C" void rush_real_overlay_a_func_80390418(uint8_t*, recomp_context*);
+extern "C" void overlay_a_func_80390418(uint8_t* rdram,recomp_context* ctx) {
+    apply_cheat_preferences(rdram);
+    rush_real_overlay_a_func_80390418(rdram,ctx);
+}
+// Retail initialization copies the encoded fog byte and clamps >=9 to zero.
+// Keep the displayed palette index consistent with its actual 18+index state.
+extern "C" void rush_real_overlay_a_func_8039C910(uint8_t*,recomp_context*);
+extern "C" void overlay_a_func_8039C910(uint8_t* rdram,recomp_context* ctx) {
+    apply_cheat_preferences(rdram,true);
+    rush_real_overlay_a_func_8039C910(rdram,ctx);
+    if(cheat_visibility&&cheat_visibility->desired())
+        MEM_H(0,int32_t(0x801164CCu))=rush::cheats::fog_menu_value(
+            uint8_t(MEM_BU(0,int32_t(0x801427A0u))));
+}
 extern "C" void rush_real_game_loop(uint8_t*, recomp_context*);
 extern "C" void game_loop(uint8_t* rdram, recomp_context* ctx) {
     static unsigned calls = 0;
     if (check_framebuffer && calls++ < 2) std::puts("GUEST_MAIN_LOOP_ENTERED");
+    apply_cheat_preferences(rdram);
     rush_real_game_loop(rdram, ctx);
-}
-// Apply host selections on the retail main-menu thread before its input/render.
-extern "C" void rush_real_overlay_a_func_80390418(uint8_t*, recomp_context*);
-extern "C" void overlay_a_func_80390418(uint8_t* rdram,recomp_context* ctx) {
-    static rush::cheats::NativeState state;
-    if(rush::pc::cheatSettings) {
-        struct Memory {
-            uint8_t* rdram;
-            void byte(uint32_t a,uint8_t v){MEM_B(0,int32_t(a))=v;}
-            void half(uint32_t a,uint16_t v){MEM_H(0,int32_t(a))=v;}
-        } memory{rdram};
-        const auto [prefs,revision]=rush::pc::cheatSettings->snapshot();
-        if(state.apply(memory,prefs,revision))std::printf("CHEAT_SETTINGS_DIRECT_APPLIED: revision=%llu menu=%d selected=%u\n",(unsigned long long)revision,prefs.show,unsigned(std::count(prefs.enabled.begin(),prefs.enabled.end(),true)));
-    }
-    rush_real_overlay_a_func_80390418(rdram,ctx);
-}
-extern "C" void rush_real_overlay_a_func_8039C910(uint8_t*,recomp_context*);
-extern "C" void overlay_a_func_8039C910(uint8_t* rdram,recomp_context* ctx) {
-    rush_real_overlay_a_func_8039C910(rdram,ctx);
-    if(rush::pc::cheatSettings&&rush::pc::cheatSettings->desired())MEM_H(0,int32_t(0x801164CCu))=rush::cheats::fog_menu_value(uint8_t(MEM_BU(0,int32_t(0x801427A0u))));
 }
 extern "C" void rush_real_game_mode_handler(uint8_t*, recomp_context*);
 extern "C" void game_mode_handler(uint8_t* rdram, recomp_context* ctx) {
@@ -664,9 +686,9 @@ extern "C" void inflate_entry(uint8_t* rdram, recomp_context* ctx) {
     const size_t count=source==0xB5C534?194128:source==0xB6FEC4?43888:0;
     const char* digest=source==0xB5C534?"0d6702c320df84cc6cbc3c5967dde08d44b6e476e110667fe2a43dc2dd536667":
         "b55fc2d1b22eb1ebdf01286a69a181b496da7b45ff7aec888ff74b7db748e7cd";
-    require(count && rush::rom::guest_image(rdram,0x38A400,count,digest), "guest overlay differs from verified image");
+    require(count && rush::rom::guest_image(rdram,0x38A400,count,digest),"guest overlay differs from verified image");
     load_overlays(source==0xB5C534?0xC9DFA0:0xCCD5F0,int32_t(destination),count);
-    std::printf("GUEST_OVERLAY_REGISTERED: source=0x%08X destination=0x%08X, SHA256 verified %zu bytes.\n",source,destination,count);
+
 }
 extern "C" void rush_real_bzero_recomp(uint8_t*, recomp_context*);
 extern "C" void bzero_recomp(uint8_t* rdram, recomp_context* ctx) {
@@ -675,8 +697,7 @@ extern "C" void bzero_recomp(uint8_t* rdram, recomp_context* ctx) {
     if (check_decompress && address == 0x801249F0 && size == 0x55C50) {
         require(scheduler_created && scheduler_entered, "scheduler did not execute before decompression");
         require(rush::rom::guest_image(rdram,0x86A50,expected_game_size,
-            "bf7da3fa6283428a97372250cd4076d15e9eae10f9d5709c0387fe0742d43a1d"),
-            "guest-decompressed game differs from verified image");
+            "bf7da3fa6283428a97372250cd4076d15e9eae10f9d5709c0387fe0742d43a1d"),"guest-decompressed game differs");
         for (uint32_t i = 0; i < size; ++i)
             require(rdram[(0x1249F0 + i) ^ 3] == 0, "game BSS not cleared");
         load_overlays(0xC00000, int32_t(0x80086A50), expected_game_size);
@@ -708,10 +729,61 @@ static void update_window(void*) {
         std::puts("NATIVE_BOUND_REACHED: requesting runtime shutdown");
         ultramodern::quit(); return;
     }
+#ifdef RUSH_ENABLE_LUS_IMGUI
+    if(controller_input){
+        controller_input->update_accessories();
+        std::lock_guard<std::mutex> lock(rush::options::input_ui.mutex);
+        auto& ui=rush::options::input_ui;
+        if(ui.pending){
+            if(controller_input->apply_config(*ui.pending,ui.error)){++ui.revision;std::puts("LUS_CONTROLLER_CONFIG_SAVED");}
+            ui.pending.reset();ui.saving=false;
+        }
+        if(ui.review_request){
+            try{
+                auto bytes=rush::options::controller_submission(*ui.review_request).dump(2);
+                const char* opts=std::getenv("RUSH_OPTIONS_CONFIG");if(!opts)throw std::runtime_error("Options folder is required for controller submissions.");
+                auto package=rush::options::save_controller_submission(std::filesystem::u8path(opts).parent_path()/"controller-submissions",bytes);
+                auto url=rush::options::review_link(*ui.review_request,bytes);
+                if(url.size()>7000){if(SDL_SetClipboardText(bytes.c_str())!=0)throw std::runtime_error("Cannot copy review package.");url=rush::options::review_link(*ui.review_request,"Paste the controller package copied by Rush here.");}
+                if(SDL_OpenURL(url.c_str())!=0)throw std::runtime_error("Could not open GitHub. Your review package is saved at "+package.string());
+                ui.review_message="Review form opened. Complete submission on GitHub. A local copy is saved at "+package.string();
+            }catch(const std::exception& e){ui.review_message=e.what();}
+            ui.review_request.reset();
+        }
+        ui.config=controller_input->config();ui.devices=controller_input->manager().devices();ui.ready=true;
+        for(int p=0;p<4;++p)controller_input->manager().controller_state(p,ui.states[p]);
+    }
+    if(rush::options::controllers.exchange(false) && controller_input)controller_input->open_remapping(rush::options::window);
+    int requested_size=rush::options::window_size_request.exchange(-1);
+    if(requested_size>=0 && requested_size<6 && rush::options::window){
+        constexpr int sizes[][2]={{640,480},{1280,720},{1920,1080},{2560,1440},{3440,1440},{3840,2160}};
+        SDL_SetWindowSize(rush::options::window,sizes[requested_size][0],sizes[requested_size][1]);
+        int width=0,height=0;SDL_GetWindowSize(rush::options::window,&width,&height);
+        std::printf("LUS_WINDOW_RESOLUTION: %d x %d\n",width,height);
+    }
+    int requested_resolution=rush::options::resolution_request.exchange(-1);
+    int requested_fullscreen=rush::options::fullscreen_request.exchange(-1);
+    int requested_refresh=rush::options::refresh_request.exchange(-1);
+    if(requested_resolution>=0 || requested_fullscreen>=0 || requested_size>=0 || requested_refresh>=0){
+        auto config=ultramodern::renderer::get_graphics_config();
+        if(requested_refresh>=0){config.rr_option=ultramodern::renderer::RefreshRate::Manual;config.rr_manual_value=requested_refresh;}
+        if(requested_size>=0)config.ar_option=requested_size==0?ultramodern::renderer::AspectRatio::Original:ultramodern::renderer::AspectRatio::Expand;
+        if(requested_resolution>=0) config.res_option=requested_resolution==0?ultramodern::renderer::Resolution::Original:requested_resolution==1?ultramodern::renderer::Resolution::Original2x:ultramodern::renderer::Resolution::Auto;
+        if(requested_fullscreen>=0)config.wm_option=requested_fullscreen?ultramodern::renderer::WindowMode::Fullscreen:ultramodern::renderer::WindowMode::Windowed;
+        ultramodern::renderer::set_graphics_config(config);
+        rush::options::is_fullscreen.store(config.wm_option==ultramodern::renderer::WindowMode::Fullscreen);
+        std::puts("LUS_GRAPHICS_REQUEST_APPLIED");
+    }
+#endif
     SDL_Event event;
       while (SDL_PollEvent(&event)) {
-          if(rush::pc::event(event))continue;
-          if(event.type==rush::pc::action_event && event.user.code==300){controller_input->open_remapping(rush::pc::game);continue;}
+#ifdef RUSH_ENABLE_LUS_IMGUI
+          if(rush::options::route(event)) {
+              SDL_Event release{};release.type=SDL_WINDOWEVENT;release.window.event=SDL_WINDOWEVENT_FOCUS_LOST;
+              keyboard_input.handle_event(release);
+              continue;
+          }
+#endif
           if (controller_input) controller_input->handle_event(event);
           else keyboard_input.handle_event(event);
           if (event.type == SDL_QUIT) { std::puts("NATIVE_QUIT_REQUESTED"); ultramodern::quit(); return; }
@@ -725,24 +797,25 @@ static void update_window(void*) {
           }
       }
       const uint64_t dropped_taps = keyboard_input.take_dropped_tap_count();
-      if(const int action=rush::pc::pending.exchange(0)){if(action==300)controller_input->open_remapping(rush::pc::game);else if(action==401)rush::pc::popup(rush::pc::cheatMenu);else if(action==409)rush::pc::popup(rush::pc::displayMenu);else rush::pc::command(action);}
       if (dropped_taps != 0)
           std::fprintf(stderr, "Keyboard input queue full; dropped %llu short tap(s).\n",
               (unsigned long long)dropped_taps);
 }
 extern "C" bool rush_controller_pak_attached();
-int wmain(int argc, wchar_t** wide_argv) {
-    require(argc==3 || argc==4,"pass the external ROM path and player profile directory");
-    std::vector<std::string> arguments;
-    std::vector<char*> argument_pointers;
+int wmain(int argc,wchar_t** wide_argv) {
+    require(argc==3 || argc==4,"pass external ROM path and player profile directory");
+    std::vector<std::string> arguments;std::vector<char*> pointers;
     for(int i=0;i<argc;++i)arguments.push_back(rush::rom::utf8(wide_argv[i]));
-    for(auto& argument:arguments)argument_pointers.push_back(argument.data());
-    char** argv=argument_pointers.data();
+    for(auto& a:arguments)pointers.push_back(a.data());char** argv=pointers.data();
     std::unique_ptr<rush::rom::File> external_rom;
-    try { external_rom=std::make_unique<rush::rom::File>(std::filesystem::path(wide_argv[1])); }
-    catch(const std::exception& error) {std::fprintf(stderr,"ROM_REQUIRED: %s\n",error.what());return 65;}
-    std::puts("EXTERNAL_ROM_VERIFIED: original US ROM read from selected location; no stored ROM fallback");
-    try { (void)rush_controller_pak_attached(); }
+    try{external_rom=std::make_unique<rush::rom::File>(std::filesystem::path(wide_argv[1]));}
+    catch(const std::exception& e){std::fprintf(stderr,"ROM_REQUIRED: %s\n",e.what());return 65;}
+    std::puts("EXTERNAL_ROM_VERIFIED: player supplied ROM; no cached fallback");
+#ifdef RUSH_ENABLE_LUS_IMGUI
+    try{const char* options=std::getenv("RUSH_OPTIONS_CONFIG");rush::options::Store preferences(options?std::filesystem::u8path(options):std::filesystem::path{});for(int p=0;p<4;++p)rush::accessories::mode[p].store(preferences.pak_modes[p]);}
+    catch(const std::exception& error){std::fprintf(stderr,"Controller accessory preferences failed: %s\n",error.what());return 1;}
+#endif
+    try { rush::accessories::memory_attached.store(rush_controller_pak_attached()); }
     catch (const std::exception& error) {
         std::fprintf(stderr, "Controller Pak initialization failed: %s\n", error.what());
         return 1;
@@ -786,7 +859,7 @@ int wmain(int argc, wchar_t** wide_argv) {
     recomp::overlays::register_overlays({section_table, num_sections, num_sections}, {nullptr, 0});
     require(SDL_Init(SDL_INIT_VIDEO | rush::input::sdl_init_flags | (check_startup_run && !audio_windows_output ? SDL_INIT_AUDIO : 0)) == 0, SDL_GetError());
     controller_input = std::make_unique<rush::input::System>(keyboard_input);
-    auto* window = SDL_CreateWindow(_wgetenv(L"RUSH_REMASTER_TEXTURE_PACK")?"Rush 2049 Remastered 4x":"Rush 2049 Original PC", SDL_WINDOWPOS_UNDEFINED,
+    auto* window = SDL_CreateWindow(std::getenv("RUSH_REMASTER_TEXTURE_PACK")?"Rush 2049 Remaster":"Rush 2049 Original", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_VULKAN | (check_framebuffer ? 0 : SDL_WINDOW_HIDDEN));
     require(window != nullptr, SDL_GetError());
     recomp::Configuration cfg{};
@@ -794,8 +867,13 @@ int wmain(int argc, wchar_t** wide_argv) {
     SDL_SysWMinfo native{};
     SDL_VERSION(&native.version);
     require(SDL_GetWindowWMInfo(window, &native) == SDL_TRUE, SDL_GetError());
-    if(check_startup_run)rush::pc::attach(window,native.info.win.window,std::filesystem::path(wide_argv[2]).parent_path());
     ShowWindow(native.info.win.window, SW_SHOW);
+#ifdef RUSH_ENABLE_LUS_IMGUI
+    rush::options::window=window;
+    const char* cheat_path=std::getenv("RUSH_CHEAT_CONFIG");
+    cheat_visibility=std::make_unique<rush::cheats::Visibility>(cheat_path?std::filesystem::path(cheat_path):std::filesystem::path(argv[2])/"cheats.cfg");
+    rush::options::cheat_preferences=cheat_visibility.get();
+#endif
     cfg.window_handle = {native.info.win.window, GetCurrentThreadId()};
     cfg.rsp_callbacks = rush_rsp_callbacks();
     cfg.renderer_callbacks = rush_renderer_callbacks();
@@ -807,9 +885,12 @@ int wmain(int argc, wchar_t** wide_argv) {
         cfg.input_callbacks.get_connected_device_info = [](int port) {
             return ultramodern::input::connected_device_info_t{
                 controller_input && controller_input->connected(port) ? ultramodern::input::Device::Controller : ultramodern::input::Device::None,
-                port == 0 && rush_controller_pak_attached() ? ultramodern::input::Pak::ControllerPak : ultramodern::input::Pak::None};
+                rush::accessories::has_rumble(port)?ultramodern::input::Pak::RumblePak:(port==0 && rush::accessories::mode[port].load()==0 && rush_controller_pak_attached()?ultramodern::input::Pak::ControllerPak:ultramodern::input::Pak::None)};
         };
         cfg.input_callbacks.get_input = [](int port, uint16_t* buttons, float* x, float* y) {
+#ifdef RUSH_ENABLE_LUS_IMGUI
+            if(rush::options::visible.load()){*buttons=0;*x=0;*y=0;return controller_input && controller_input->connected(port);}
+#endif
             if (!controller_input || !controller_input->get_input(port, buttons, x, y)) return false;
             if(port == 0 && steady_ms()<native_script_deadline.load()) {
                 *buttons|=native_script_buttons.load();
@@ -841,7 +922,7 @@ int wmain(int argc, wchar_t** wide_argv) {
             }
             return true;
         };
-        cfg.input_callbacks.set_rumble = [](int, bool) {};
+        cfg.input_callbacks.set_rumble = [](int port,bool active){rush::accessories::request_rumble(port,active);};
         std::printf("SDL controller backend and configured keyboard port connected: Enter=Start, Z=A, X=B, Space=Z trigger, arrows=stick, Q/E=L/R, I/J/K/L=C up/left/down/right. Controller Pak %s.\n", rush_controller_pak_attached() ? "connected" : "absent");
     }
     cfg.gfx_callbacks.update_gfx = update_window;
@@ -886,7 +967,6 @@ int wmain(int argc, wchar_t** wide_argv) {
     std::puts("NATIVE_RUNTIME_RETURNED: shutdown completed");
     controller_input->manager().shutdown();
     controller_input.reset();
-    rush::pc::detach();
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

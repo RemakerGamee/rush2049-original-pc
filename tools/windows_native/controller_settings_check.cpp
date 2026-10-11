@@ -1,6 +1,7 @@
 // Native Windows check of the actual System and saved configuration, using
 // isolated files and SDL virtual devices. This does not exercise physical pads.
 #include "controller_input.hpp"
+#include "controller-presets.hpp"
 #include <iostream>
 #include <filesystem>
 #include <fstream>
@@ -10,27 +11,45 @@ static unsigned checks;
 static void verify(bool ok,const char* why){++checks;if(!ok)throw std::runtime_error(why);}
 static Config read(const char* path){std::ifstream f(path);verify(bool(f),"profile open");std::string s((std::istreambuf_iterator<char>(f)),{});auto c=parse_config(s);verify(c.ok(),"profile parse");return c.config;}
 static void lifecycle(){
+ rush::accessories::mode[0].store(0);rush::accessories::rumble_supported[0].store(true);rush::accessories::request_rumble(0,true);
+ verify(!rush::accessories::rumble_requested[0].load(),"Memory Pak cannot start rumble");
+ rush::accessories::mode[0].store(1);rush::accessories::request_rumble(0,true);verify(rush::accessories::rumble_requested[0].load(),"supported Rumble Pak queues vibration");
+ rush::accessories::rumble_supported[0].store(false);rush::accessories::request_rumble(0,true);verify(!rush::accessories::rumble_requested[0].load(),"unsupported pad cannot rumble");
+ rush::accessories::mode[0].store(0);
+
+ auto wired=n64_controller_preset(false),wireless=n64_controller_preset(true);
+ verify(wired.guid==wired_n64_guid && wireless.guid==wireless_n64_guid,"preset device identities");
+ verify(wired.bindings[size_t(Button::Start)][0].index==12 && wireless.bindings[size_t(Button::Start)][0].index==9,"distinct N64 Start defaults");
+ verify(wired.bindings[size_t(Button::CUp)][0].index==9 && wireless.bindings[size_t(Button::CUp)][0].index==11,"distinct N64 C defaults");
+ for(const auto& preset:{wired,wireless}){Config c;c.profiles={preset};auto next=parse_config(serialize_input_config(c));verify(next.ok() && next.config.profiles[0].bindings.size()==14,"complete default mapping persists");verify(!validate_profile(preset,{13,2,1}),"N64 defaults fit verified device capabilities");}
+ auto xbox_preset=xbox_controller_preset(wired_n64_guid);verify(xbox_preset.game_controller && xbox_preset.bindings[size_t(Button::Z)][0].index==5,"Xbox uses logical right-trigger mapping");
+
  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS,"1");
  verify(SDL_Init(SDL_INIT_VIDEO|sdl_init_flags)==0,"SDL init");
  SDL_VirtualJoystickDesc desc{};desc.version=SDL_VIRTUAL_JOYSTICK_DESC_VERSION;desc.type=SDL_JOYSTICK_TYPE_UNKNOWN;desc.naxes=4;desc.nbuttons=13;desc.nhats=1;desc.vendor_id=0xf123;desc.product_id=1;desc.name="Rush isolated virtual one";
  int one=SDL_JoystickAttachVirtualEx(&desc);verify(one>=0,"attach one");char guid1[33]{};SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(one),guid1,33);
  desc.product_id=2;desc.name="Rush isolated virtual two";int two=SDL_JoystickAttachVirtualEx(&desc);verify(two>=0,"attach two");char guid2[33]{};SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(two),guid2,33);
- // Exercise the actual native preset and per-button capture helpers without opening a UI.
- {NativeInputWindow ui;ui.changed={};ui.select_device(one);verify(ui.joystick!=nullptr,"preset device open");
-  ui.apply_preset(1,one);verify(ui.profile.bindings[size_t(Button::Start)][0].index==12,"wired N64 default Start");
-  verify(ui.profile.bindings[size_t(Button::A)][0].index==2,"wired N64 default A");
-  ui.apply_preset(2,one);verify(ui.profile.bindings[size_t(Button::Start)][0].index==9,"wireless N64 default Start");
-  verify(ui.profile.bindings[size_t(Button::CUp)][0].index==11,"wireless N64 default C-Up");
-  ui.begin_capture(int(Button::A));SDL_Event capture{};capture.type=SDL_JOYBUTTONDOWN;capture.jbutton.which=SDL_JoystickInstanceID(ui.joystick);capture.jbutton.button=7;ui.capture_event(capture);
-  verify(ui.profile.bindings[size_t(Button::A)][0].index==7,"custom captured button replaces preset");
-  verify(!validate_profile(ui.profile,{13,4,1}).has_value(),"custom N64 preset validates");
-  SDL_JoystickClose(ui.joystick);ui.joystick=nullptr;}
  Config c;for(int port=0;port<2;++port){Profile p;p.id="virtual"+std::to_string(port);p.guid=port?guid2:guid1;p.stick_x={true,0,false};p.stick_y={true,1,true};p.bindings[size_t(Button::A)]={{BindKind::Button,2}};p.bindings[size_t(Button::B)]={{BindKind::Button,1}};c.profiles.push_back(p);c.assignments[p.guid]=port;}
  rush::keyboard::Input keyboard;System sys(keyboard,c,{},{});sys.manager().device_added(one);sys.manager().device_added(two);
  SDL_Joystick* j1=SDL_JoystickOpen(one);SDL_Joystick* j2=SDL_JoystickOpen(two);verify(j1&&j2,"setters open");
  auto change=[&](SDL_Joystick* j,int button,int value){verify(SDL_JoystickSetVirtualButton(j,button,Uint8(value))==0,"virtual button");SDL_JoystickUpdate();SDL_Event e{};e.type=SDL_JOYBUTTONDOWN;e.jbutton.which=SDL_JoystickInstanceID(j);sys.handle_event(e);};
  auto sample=[&](int port,uint16_t expected){uint16_t b=0;float x=0,y=0;verify(sys.get_input(port,&b,&x,&y),"port connected");verify(b==expected,"port buttons");};
  change(j1,2,1);change(j2,1,1);sample(0,0x8000);sample(1,0x4000);
+ // Exercise the UI's real event-thread apply path, including port reassignment
+ // and invalid-map rollback, against owned virtual devices and temporary config.
+ Config changed=c;changed.assignments[guid1]=1;changed.assignments[guid2]=0;
+ changed.profiles[0].sensitivity=1.25f;std::string apply_error;
+ verify(sys.apply_config(changed,apply_error),"UI apply/save");sample(1,0x8000);sample(0,0x4000);
+ auto disabled=changed;disabled.profiles[0].enabled=false;for(auto& bs:disabled.profiles[0].bindings)bs.clear();disabled.profiles[0].stick_x={};disabled.profiles[0].stick_y={};
+ verify(sys.apply_config(disabled,apply_error),"clear bindings saves neutral controller");sample(1,0);sample(0,0x4000);
+ verify(sys.apply_config(changed,apply_error),"restore controller after clear");
+ auto invalid=changed;invalid.profiles[0].bindings[size_t(Button::A)]={{BindKind::Button,250}};
+ verify(!sys.apply_config(invalid,apply_error),"invalid hardware binding rejected");sample(1,0x8000);sample(0,0x4000);
+ auto persisted=read(remap_config_path().c_str());verify(persisted.profiles[0].sensitivity==1.25f,"sensitivity survives saved parse");
+ auto xbox=default_game_controller_profile();xbox.id="xbox-specific";xbox.guid=guid1;
+ Config extended;extended.profiles={xbox};auto roundtrip=parse_config(serialize_input_config(extended));
+ verify(roundtrip.ok() && roundtrip.config.profiles[0].game_controller && roundtrip.config.profiles[0].guid==guid1,"specific SDL profile roundtrip");
+ verify(sys.apply_config(c,apply_error),"restore virtual port defaults");
  SDL_Event focus{};focus.type=SDL_WINDOWEVENT;focus.window.event=SDL_WINDOWEVENT_FOCUS_LOST;sys.handle_event(focus);sample(0,0);sample(1,0);
  change(j1,2,0);change(j2,1,0);sample(0,0);sample(1,0);focus.window.event=SDL_WINDOWEVENT_FOCUS_GAINED;sys.handle_event(focus);sample(0,0);sample(1,0);
  change(j1,2,1);sys.handle_event(SDL_Event{});focus.window.event=SDL_WINDOWEVENT_FOCUS_LOST;sys.handle_event(focus);sample(0,0);focus.window.event=SDL_WINDOWEVENT_FOCUS_GAINED;sys.handle_event(focus);sample(0,0x8000);

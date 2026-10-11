@@ -31,7 +31,8 @@ struct Preferences {
  // These are opt-in modifiers, not raw native values. Unchecked preserves retail defaults.
  Preferences()=default;
 };
-// Saved host settings are consumed only by the guest main-menu wrapper.
+inline void enable_all(Preferences& p) {p.show=true;p.enabled.fill(true);}
+// Saved host settings are consumed on the guest game thread, including the title screen.
 // No controller callback, synthetic buttons, codes or navigation are involved.
 class Visibility {
  std::filesystem::path path_;
