@@ -1,12 +1,19 @@
-# Rush 2049 PC — Original and Remaster
+# San Francisco Rush 2049 PC Port — Windows Downloads, Original and Remaster
 
-Experimental Windows port of San Francisco Rush 2049, using RT64 / Vulkan with Dear ImGui settings and the libultraship Config component.
+Play **San Francisco Rush 2049 for Nintendo 64 on Windows PC** with ready-to-install EXE downloads, controller remapping, display settings and optional remastered textures. This unofficial, experimental N64 PC port offers both the original SDL2/RT64 release and a newer release with Dear ImGui settings and the libultraship Config component. Both use the RT64 Vulkan renderer.
 
 **You must provide your own supported original US Nintendo 64 ROM. No ROM is included.** Setup validates it before installation, and the launcher and game validate it again before launch. Your ROM remains in your chosen folder; it is not copied into the installation, uploaded, or cached as a fallback. z64, v64 and n64 byte orders are accepted. Supported normalized SHA1: `3f99351d7bb61656614bdb2aa1a90cfe55d1922c` (12 MiB).
 
 ## Download and play
 
-[Download the Windows installers](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0).
+Choose the version you want:
+
+| Windows PC version | Public downloads | Original / Remaster choices |
+| --- | --- | --- |
+| **Without libultraship / Dear ImGui — v0.2.0** | [Download the original SDL2/RT64 version](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) | Separate Original and Remastered EXE installers; native Windows settings menus. |
+| **With libultraship / Dear ImGui — v0.3.0** | [Download the libultraship / ImGui version](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0) | Original-only installer or Original + Remaster installer with a choice before play. |
+
+Both versions require your own supported US Nintendo 64 ROM. The instructions and settings below describe **v0.3.0**; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts.
 
 The **Original installer** is smaller and uses original ROM textures. The **Original + Remaster installer** includes the reviewed 5,957-texture pack and asks you to choose **Original** or **Remaster** before play. Original bypasses the replacement pack and remastered circuit lighting; Remaster enables them. Both choices use RT64 and the same settings, controller mappings and retained saves.
 
