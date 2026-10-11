@@ -33,7 +33,7 @@ def resources(directory,payload,remastered=False,icon=None,remaster_only=False):
     header='#pragma once\nnamespace payload { struct Entry { int id; const wchar_t* path; const char* sha256; }; inline constexpr Entry files[]={\n'
     header+=''.join('{'+str(row['id'])+',L'+json.dumps(row['path'])+','+json.dumps(row['sha256'])+'},\n' for row in entries)
     if remaster_only and not remastered:raise ValueError('Remaster-only requires a texture pack')
-    header+='}; inline constexpr bool remastered='+('true' if remastered else 'false')+'; inline constexpr bool remaster_only='+('true' if remaster_only else 'false')+'; inline constexpr wchar_t edition[]=L"Rush 2049 '+('Remastered libultraship' if remaster_only else 'Remastered 4x' if remastered else 'Original PC')+'"; }\n'
+    header+='}; inline constexpr bool remastered='+('true' if remastered else 'false')+'; inline constexpr bool remaster_only='+('true' if remaster_only else 'false')+'; inline constexpr wchar_t edition[]=L"Rush 2049 '+('Remastered libultraship' if remaster_only else 'Remastered 4x' if remastered else 'Original libultraship')+'"; }\n'
     (directory/'payload_table.hpp').write_text(header)
     (directory/'setup.rc').write_text(''.join(rc))
     return entries
@@ -80,7 +80,7 @@ def main():
             source=(pack/relative).resolve();assert source.is_relative_to(pack) and not (pack/relative).is_symlink()
             assert source.read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
             target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target);hashes.add(digest);paths.add(str(relative))
-    shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.0.zip')
+    shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.1.zip')
     shutil.copyfile(ROOT/'COPYING',payload/'COPYING')
     shutil.copyfile(ROOT/'README.md',payload/'README.md')
     table=resources(output/'launcher-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only)
@@ -90,8 +90,8 @@ def main():
     table=resources(output/'setup-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only)
     command(['cmake','-S',HERE,'-B',output/'setup-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_BUILD_SETUP=ON','-DRUSH_RESOURCE_DIR='+str(output/'setup-resources')],output/'setup-configure.log')
     command(['cmake','--build',output/'setup-build','--config','Release','--parallel','2'],output/'setup-build.log')
-    installer=output/('Rush2049-Remastered-PC-v0.3.0-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.0-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
-    manifest={'version':'v0.3.0','edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
+    installer=output/('Rush2049-Remastered-PC-v0.3.1-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.1-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
+    manifest={'version':'v0.3.1','edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
     (output/'package-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     (output/'SHA256SUMS.txt').write_text(manifest['installer_sha256']+'  '+installer.name+'\n')
     print(json.dumps({'installer':str(installer),'size':installer.stat().st_size,'sha256':manifest['installer_sha256'],'payload_files':len(table)}))

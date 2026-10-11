@@ -31,7 +31,7 @@ int main(int argc,char** argv) {
         for(unsigned row=0;row<21;++row)require(memory.bytes[0x8011648C+row]==1,"All Cheats must activate all native rows");
         require(SendMessageW(GetDlgItem(rush::pc::cheatWindow,103),BM_GETCHECK,0,0)==BST_CHECKED,"All Cheats control must be checked");
         SendMessageW(rush::pc::cheatWindow,WM_COMMAND,MAKEWPARAM(103,BN_CLICKED),0);apply();
-        for(unsigned row=0;row<21;++row)require(memory.bytes[0x8011648C+row]==0,"All Cheats OFF must restore native rows");
+        for(unsigned row=0;row<21;++row)require(memory.bytes[0x8011648C+row]==1,"All Cheats OFF must keep native rows adjustable");
         require(memory.bytes[0x801164A1]==1,"Enable must show native menu");
         for(size_t i=0;i<21;++i) {
             rush::pc::command(110+int(i));require(apply(),"selection must publish native update");
@@ -41,7 +41,7 @@ int main(int argc,char** argv) {
             require(GetMenuState(rush::pc::cheatMenu,110+int(i),MF_BYCOMMAND)&MF_CHECKED,"selected menu must be checked");
             require(SendMessageW(GetDlgItem(rush::pc::cheatWindow,110+int(i)),BM_GETCHECK,0,0)==BST_CHECKED,"persistent panel must show selected state");
             rush::pc::command(110+int(i));require(apply(),"OFF must publish update");
-            require(memory.bytes[0x8011648C+binding.row]==0,"OFF must clear native row");
+            require(memory.bytes[0x8011648C+binding.row]==1,"OFF must keep native row adjustable");
             if(binding.byte_address)require(memory.bytes[binding.byte_address]==binding.off,"OFF must restore gameplay default");
         }
         rush::pc::command(110);apply();

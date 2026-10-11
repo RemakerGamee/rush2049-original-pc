@@ -1,0 +1,17 @@
+--- a/src/render/rt64_vi_renderer.cpp
++++ b/src/render/rt64_vi_renderer.cpp
+@@ -1,3 +1,4 @@
++#include "rush_fullscreen_fill.h"
+ //
+ // RT64
+ //
+@@ -70,6 +71,9 @@
+         RenderViewport viewport;
+         RenderRect scissor;
+         getViewportAndScissor(p.swapChain, *p.vi, p.resolutionScale, p.downsamplingScale, p.removeBlackBorders, viewport, scissor);
++        if (rush::presentation::fullscreen.load() && rush::presentation::fill_fullscreen.load()) {
++            rush::presentation::fill_surface(viewport, scissor, int(p.swapChain->getWidth()), int(p.swapChain->getHeight()));
++        }
+         p.commandList->setViewports(viewport);
+         p.commandList->setScissors(scissor);
+ 

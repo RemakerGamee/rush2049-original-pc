@@ -2,11 +2,25 @@
 #include <iostream>
 #include "cheat_native_state.hpp"
 #include <map>
+#include "rush_fullscreen_fill.h"
 int main(){
     auto root=std::filesystem::temp_directory_path()/std::to_string(GetCurrentProcessId());
     std::filesystem::create_directory(root);auto file=root/"options.json";
     try {
+        struct Viewport{float x,y,width,height,minDepth=0,maxDepth=1;};
+        struct Crop{int left,top,right,bottom;};
+        for(auto extent:{std::array<int,2>{1280,720},{1920,1080},{3440,1440},{3840,2160},{1080,1920}}){
+            Viewport v{240,0,1440,1080};Crop c{240,0,1680,1080};
+            if(!rush::presentation::fill_surface(v,c,extent[0],extent[1])||v.x!=0||v.y!=0||std::abs(v.width-extent[0])>0.01f||std::abs(v.height-extent[1])>0.01f||c.left!=0||c.top!=0||c.right!=extent[0]||c.bottom!=extent[1]||v.minDepth!=0||v.maxDepth!=1)throw std::runtime_error("Fullscreen image does not cover surface");
+        }
+        Viewport sampled{-10,-20,340,280};Crop active{0,0,320,240};
+        rush::presentation::fill_surface(sampled,active,1920,1080);
+        if(sampled.x!=-60||sampled.y!=-90||sampled.width!=2040||sampled.height!=1260)throw std::runtime_error("VI sampling/crop relationship changed");
+        Viewport unchanged{0,0,320,240};Crop empty{0,0,0,0};
+        if(rush::presentation::fill_surface(unchanged,empty,1920,1080)||unchanged.width!=320)throw std::runtime_error("Empty crop must preserve viewport");
         struct Memory {std::map<uint32_t,unsigned> bytes,halves;
+            uint8_t read_byte(uint32_t a){return uint8_t(bytes[a]);}
+            uint16_t read_half(uint32_t a){return uint16_t(halves[a]);}
             void byte(uint32_t a,uint8_t v){bytes[a]=v;}
             void half(uint32_t a,uint16_t v){halves[a]=v;}} memory;
         rush::cheats::NativeState cheats;
@@ -25,10 +39,30 @@ int main(){
         if(!saved_cheats.set(prefs,cheat_error))throw std::runtime_error(cheat_error);
         auto reloaded=rush::cheats::Visibility(root/"cheats.cfg").preferences();
         if(!reloaded.show||reloaded.enabled!=prefs.enabled)throw std::runtime_error("Bulk preferences lost on restart");
+        auto baseline=rush::cheats::NativeState::read(memory);
+        memory.bytes[0x80142B00]=0; // Native INVINCIBLE OFF.
+        memory.bytes[0x801427A0]=23; // Native fifth fog palette, not BLACK.
+        memory.bytes[0x80143F1C]=3; // Native mass choice must survive next load.
+        auto [native_prefs,expected]=saved_cheats.snapshot();
+        if(!rush::cheats::NativeState::capture_changes(native_prefs,baseline,rush::cheats::NativeState::read(memory))||native_prefs.enabled[13]||native_prefs.native_raw[6]!=23||native_prefs.native_raw[18]!=3)throw std::runtime_error("Native changes not captured");
+        if(!saved_cheats.set_if_revision(native_prefs,expected,cheat_error))throw std::runtime_error("Native sync save failed");
+        cheats.adopt(expected+1);
+        if(cheats.apply(memory,native_prefs,expected+1))throw std::runtime_error("Native edit was reapplied unnecessarily");
+        auto exact=rush::cheats::Visibility(root/"cheats.cfg").preferences();
+        if(exact.enabled[13]||exact.native_raw[6]!=23||exact.native_raw[18]!=3)throw std::runtime_error("Native values lost on restart");
+        cheats.invalidate();cheats.apply(memory,exact,expected+1);
+        if(memory.bytes[0x801427A0]!=23||memory.halves[rush::cheats::native_values+40]!=5||memory.bytes[0x80143F1C]!=3)throw std::runtime_error("Native values changed on menu reload");
+        if(!saved_cheats.set_enabled(13,true,cheat_error))throw std::runtime_error(cheat_error);
+        if(saved_cheats.set_if_revision(native_prefs,expected+1,cheat_error)||!saved_cheats.preferences().enabled[13])throw std::runtime_error("Stale guest update overwrote newer launcher choice");
+        auto nochange=exact;
+        if(rush::cheats::NativeState::capture_changes(nochange,baseline,baseline))throw std::runtime_error("Unchanged menu produced spurious save");
         prefs.show=false;cheats.apply(memory,prefs,4);
         for(auto b:rush::cheats::native_bindings)if(memory.bytes[rush::cheats::native_unlocks+b.row]!=0||(b.byte_address&&memory.bytes[b.byte_address]!=b.off))throw std::runtime_error("Master OFF failed restoration");
         rush::options::Store store(file);store.scale=1.5f;store.resolution=1;store.window_size=3;store.save();
         rush::options::Store loaded(file);
+        if(!loaded.fill_fullscreen)throw std::runtime_error("Fullscreen fill must default ON for existing preferences");
+        loaded.fill_fullscreen=false;loaded.save();if(rush::options::Store(file).fill_fullscreen)throw std::runtime_error("Fullscreen fit choice lost on restart");
+        loaded.fill_fullscreen=true;loaded.save();if(!rush::options::Store(file).fill_fullscreen)throw std::runtime_error("Fullscreen fill choice lost on restart");
         if(loaded.stored_scale()!=1.5f || loaded.resolution!=1 || loaded.window_size!=3)throw std::runtime_error("LUS config reload failed");
         for(int hz:{60,120,144,165,180,200,240}){loaded.refresh=hz;loaded.vsync=hz==60;loaded.save();rush::options::Store next(file);if(next.refresh!=hz || next.vsync!=(hz==60))throw std::runtime_error("Display settings lost on restart");}
         loaded.pak_modes={1,0,1,0};loaded.save();if(rush::options::Store(file).pak_modes!=loaded.pak_modes)throw std::runtime_error("Pak preferences lost on restart");

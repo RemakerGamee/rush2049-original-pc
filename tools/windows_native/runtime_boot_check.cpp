@@ -3,6 +3,7 @@
 static std::unique_ptr<rush::cheats::Visibility> cheat_visibility;
 #ifdef RUSH_ENABLE_LUS_IMGUI
 #include "lus-imgui-options.hpp"
+#include "rush_fullscreen_fill.h"
 #include "ultramodern/config.hpp"
 #endif
 #include <algorithm>
@@ -425,11 +426,29 @@ extern "C" void overlay_a_func_80390418(uint8_t* rdram,recomp_context* ctx) {
 // Keep the displayed palette index consistent with its actual 18+index state.
 extern "C" void rush_real_overlay_a_func_8039C910(uint8_t*,recomp_context*);
 extern "C" void overlay_a_func_8039C910(uint8_t* rdram,recomp_context* ctx) {
-    apply_cheat_preferences(rdram,true);
+    // Only restore after native menu initialization, never on every input frame.
+    apply_cheat_preferences(rdram,MEM_BU(0,int32_t(0x803B308Cu))==0);
+    struct Memory {
+        uint8_t* rdram;
+        uint8_t read_byte(uint32_t a){return uint8_t(MEM_BU(0,int32_t(a)));}
+        uint16_t read_half(uint32_t a){return uint16_t(MEM_HU(0,int32_t(a)));}
+    } memory{rdram};
+    const auto before=rush::cheats::NativeState::read(memory);
+    const auto snapshot=cheat_visibility?cheat_visibility->snapshot():std::pair<rush::cheats::Preferences,uint64_t>{};
     rush_real_overlay_a_func_8039C910(rdram,ctx);
     if(cheat_visibility&&cheat_visibility->desired())
         MEM_H(0,int32_t(0x801164CCu))=rush::cheats::fog_menu_value(
             uint8_t(MEM_BU(0,int32_t(0x801427A0u))));
+    if(cheat_visibility){
+        auto prefs=snapshot.first;
+        if(rush::cheats::NativeState::capture_changes(prefs,before,rush::cheats::NativeState::read(memory))){
+            std::string error;
+            if(cheat_visibility->set_if_revision(prefs,snapshot.second,error)){
+                native_cheat_state.adopt(snapshot.second+1);
+                std::puts("CHEAT_SETTINGS_NATIVE_SYNCED: game change saved to launcher");
+            }else if(!error.empty())std::fprintf(stderr,"CHEAT_SETTINGS_SYNC_FAILED: %s\n",error.c_str());
+        }
+    }
 }
 extern "C" void rush_real_game_loop(uint8_t*, recomp_context*);
 extern "C" void game_loop(uint8_t* rdram, recomp_context* ctx) {
@@ -761,7 +780,9 @@ static void update_window(void*) {
     int requested_resolution=rush::options::resolution_request.exchange(-1);
     int requested_fullscreen=rush::options::fullscreen_request.exchange(-1);
     int requested_refresh=rush::options::refresh_request.exchange(-1);
-    if(requested_resolution>=0 || requested_fullscreen>=0 || requested_size>=0 || requested_refresh>=0){
+    int requested_fill=rush::options::fullscreen_fill_request.exchange(-1);
+    if(requested_fill>=0)rush::presentation::fill_fullscreen.store(requested_fill!=0);
+    if(requested_resolution>=0 || requested_fullscreen>=0 || requested_size>=0 || requested_refresh>=0 || requested_fill>=0){
         auto config=ultramodern::renderer::get_graphics_config();
         if(requested_refresh>=0){config.rr_option=ultramodern::renderer::RefreshRate::Manual;config.rr_manual_value=requested_refresh;}
         if(requested_size>=0)config.ar_option=requested_size==0?ultramodern::renderer::AspectRatio::Original:ultramodern::renderer::AspectRatio::Expand;

@@ -17,6 +17,7 @@
 #include "hle/rt64_rdp.h"
 #include <array>
 #include <stdexcept>
+#include "render/rush_fullscreen_fill.h"
 
 #ifdef RUSH_ENABLE_LUS_IMGUI
 #include "lus-imgui-renderer.hpp"
@@ -124,6 +125,10 @@ public:
         user.resolutionMultiplier = cfg.res_option == Resolution::Original2x ? 2.0 : 1.0;
         user.downsampleMultiplier = std::max(cfg.ds_option, 1);
         user.aspectRatio = static_cast<U::AspectRatio>(cfg.ar_option);
+        const bool fillFullscreen=cfg.wm_option==WindowMode::Fullscreen&&rush::presentation::fill_fullscreen.load();
+        // Keep the complete retail image for fill mode; the final VI pass
+        // stretches it to the monitor, including the original 2D menus/HUD.
+        if(fillFullscreen)user.aspectRatio=U::AspectRatio::Original;
         user.refreshRate = static_cast<U::RefreshRate>(cfg.rr_option);
         user.refreshRateTarget = std::max(cfg.rr_manual_value, 1);
         user.internalColorFormat = cfg.hpfb_option == HighPrecisionFramebuffer::On ? U::InternalColorFormat::High :
@@ -134,8 +139,9 @@ public:
         if (oldMSAA != user.antialiasing) app->updateMultisampling();
         app->updateUserConfig(false);
         app->setFullScreen(cfg.wm_option == WindowMode::Fullscreen);
+        rush::presentation::fullscreen.store(cfg.wm_option==WindowMode::Fullscreen);
 #ifdef RUSH_ENABLE_LUS_IMGUI
-        std::printf("LUS_RT64_CONFIG: resolutionMultiplier=%.1f windowScale=%d fullscreen=%d\n",user.resolutionMultiplier,user.resolution==U::Resolution::WindowIntegerScale,cfg.wm_option==WindowMode::Fullscreen);
+        std::printf("LUS_RT64_CONFIG: resolutionMultiplier=%.1f windowScale=%d fullscreen=%d fillScreen=%d\n",user.resolutionMultiplier,user.resolution==U::Resolution::WindowIntegerScale,cfg.wm_option==WindowMode::Fullscreen,fillFullscreen);
 #endif
         return true;
     }

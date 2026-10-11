@@ -4,7 +4,7 @@
 #include "gui/rt64_inspector.h"
 #include "rhi/rt64_render_hooks.h"
 #include "imgui/imgui.h"
-#include "cheat_visibility.hpp"
+#include "cheat_native_state.hpp"
 #include "lus-controller-ui.hpp"
 namespace rush::options {
 inline rush::cheats::Preferences cheat_draft;
@@ -87,28 +87,31 @@ inline void draw(RenderCommandList* commands,RenderFramebuffer*){
             ImGui::TextWrapped("Refresh rate sets RT64's presentation target. The monitor and desktop refresh rate limit what can be displayed.");
             store->fullscreen=is_fullscreen.load();
             if(ImGui::Checkbox("Fullscreen",&store->fullscreen))fullscreen_request.store(store->fullscreen?1:0);
+            ImGui::Checkbox("Fill screen in fullscreen",&store->fill_fullscreen);
+            ImGui::TextWrapped("Fill screen stretches the full game image to your display. Turn it off to preserve the original proportions. Apply and save to remember this choice.");
             ImGui::TextWrapped("Window resolution applies in windowed mode. Fullscreen uses the desktop size. Window scale adjusts RT64 rendering to the game window.");
         }
         if(page==2)controller_page(*store);
         if(page==3){ImGui::Checkbox("Show frame timing",&store->diagnostics);ImGui::Text("UI frame rate: %.1f fps",ImGui::GetIO().Framerate);ImGui::TextWrapped("Dear ImGui uses RT64's presentation hook. libultraship provides the options configuration component. Game runtime, audio and input retain their existing backends.");}
         if(page==4 && cheat_preferences){
-            ImGui::Checkbox("Enable cheat menu",&cheat_draft.show);
-            if(ImGui::Button("Enable all cheats"))rush::cheats::enable_all(cheat_draft);
-            ImGui::TextWrapped("Apply and save works from the title screen, before Start, and during the game. Enable all cheats selects every modifier, including invisible track/car and disabled brakes/collisions.");
+            cheat_draft=cheat_preferences->preferences();
+            if(ImGui::Checkbox("Enable cheat menu",&cheat_draft.show))cheat_preferences->set(cheat_draft.show,error);
+            if(ImGui::Button("Enable all cheats"))cheat_preferences->set_all(error);
+            ImGui::TextWrapped("Changes save automatically before Start and during the game. Changes in the game's cheat menu appear here too. Enable all cheats includes invisible track/car and disabled brakes/collisions.");
             ImGui::BeginChild("Native cheats",ImVec2(0,180),true);
             ImGui::BeginDisabled(!cheat_draft.show);
             for(size_t i=0;i<cheat_draft.enabled.size();++i){
                 ImGui::PushID(int(i));const auto& row=rush::cheats::settings_catalog()[i];
                 const std::string label=row.normal_on?std::string("Disable ")+row.label:row.label;
-                ImGui::Checkbox(label.c_str(),&cheat_draft.enabled[i]);
-                if(row.value){ImGui::SameLine();ImGui::TextDisabled("(%s)",row.value);}ImGui::PopID();
+                if(ImGui::Checkbox(label.c_str(),&cheat_draft.enabled[i]))cheat_preferences->set_enabled(i,cheat_draft.enabled[i],error);
+                if(row.value){ImGui::SameLine();if(cheat_draft.native_raw[i]!=65535)ImGui::TextDisabled("(in-game value: %u)",unsigned(i==6?rush::cheats::fog_menu_value(uint8_t(cheat_draft.native_raw[i])):cheat_draft.native_raw[i]));else ImGui::TextDisabled("(%s)",row.value);}ImGui::PopID();
             }
             ImGui::EndDisabled();ImGui::EndChild();
         }
         ImGui::EndChild();
         ImGui::Separator();
         if(ImGui::Button("Apply and save")){
-            try{if(page==2){store->save();save_controller_draft();}else if(page==4 && cheat_preferences){if(!cheat_preferences->set(cheat_draft,error))throw std::runtime_error(error);}else{store->save();resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);}error.clear();std::puts("LUS_OPTIONS_SAVED");}
+            try{if(page==2){store->save();save_controller_draft();}else if(page==4 && cheat_preferences){/* Cheat controls save immediately. */}else{store->save();resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);fullscreen_fill_request.store(store->fill_fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);}error.clear();std::puts("LUS_OPTIONS_SAVED");}
             catch(const std::exception& e){error=e.what();}
         }
         ImGui::SameLine();if(ImGui::Button("Close"))visible.store(false);
@@ -135,7 +138,7 @@ inline void init(RT64::Application* application){
     auto& style=ImGui::GetStyle();style.WindowRounding=6;style.FrameRounding=4;style.Colors[ImGuiCol_WindowBg]=ImVec4(0.035f,0.05f,0.08f,0.93f);style.Colors[ImGuiCol_Button]=ImVec4(0.04f,0.30f,0.52f,1);
     RT64::SetRenderHooks(nullptr,draw,deinit);available.store(true);
     listener.previous=app->appWindow->listener;app->appWindow->listener=&listener;
-    resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);
+    resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);fullscreen_fill_request.store(store->fill_fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);
     visible.store(std::getenv("RUSH_OPTIONS_OPEN")!=nullptr);
     std::puts("LUS_IMGUI_READY: F1 settings; RT64 renderer retained");
 }

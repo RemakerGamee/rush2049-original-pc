@@ -12,6 +12,7 @@ inline SDL_Window* window=nullptr;
 inline std::atomic<bool> available{false}, visible{false}, controllers{false}, is_fullscreen{false};
 inline std::atomic<int> resolution_request{-1}, fullscreen_request{-1}, window_size_request{-1}, bar_height{25};
 inline std::atomic<int> page_request{-1}, refresh_request{-1}, vsync_request{-1};
+inline std::atomic<int> fullscreen_fill_request{-1};
 inline std::atomic<uint64_t> window_extent_request{0}, actual_window_extent{0};
 inline uint64_t pack_extent(int width,int height){return (uint64_t(uint32_t(width))<<32)|uint32_t(height);}
 inline std::atomic<bool> capture_active{false}, actual_vsync{true};

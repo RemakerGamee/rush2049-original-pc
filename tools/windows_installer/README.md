@@ -7,7 +7,7 @@ First build the native game from the pinned sources with `tools/windows_native/p
 Create a text-only archive of the repository integration sources, preserving COPYING, dependency pins, patches and generation recipes. Exclude .git, binaries, generated original-game sources, ROMs, expanded images and local texture packs. Then run:
 
 ```powershell
-python tools/windows_installer/build_installer.py --native-root C:\Build\Rush2049 --output C:\Build\Rush2049-Package --source-archive C:\Build\Integration-Source-v0.3.0.zip --icon C:\Build\Artwork\rush2049.ico
+python tools/windows_installer/build_installer.py --native-root C:\Build\Rush2049 --output C:\Build\Rush2049-Package --source-archive C:\Build\Integration-Source-v0.3.1.zip --icon C:\Build\Artwork\rush2049.ico
 ```
 
 Use a new output folder. This requires the documented Visual Studio C++ toolchain and CMake on the maintainer's machine. The installer embeds the compiled game, required app-local DLLs, notices and integration source archive. Setup and launcher link the C++ runtime statically. Check current redistribution terms for the licensed Visual Studio installation before publishing its redistributable DLLs.

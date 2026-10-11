@@ -28,10 +28,11 @@ inline const std::array<Setting,21>& settings_catalog() {
 struct Preferences {
  bool show=false;
  std::array<bool,21> enabled{};
+ std::array<uint16_t,21> native_raw=[] {std::array<uint16_t,21> v;v.fill(65535);return v;}();
  // These are opt-in modifiers, not raw native values. Unchecked preserves retail defaults.
  Preferences()=default;
 };
-inline void enable_all(Preferences& p) {p.show=true;p.enabled.fill(true);}
+inline void enable_all(Preferences& p) {p.show=true;p.enabled.fill(true);p.native_raw.fill(65535);}
 // Saved host settings are consumed on the guest game thread, including the title screen.
 // No controller callback, synthetic buttons, codes or navigation are involved.
 class Visibility {
@@ -58,20 +59,52 @@ public:
    prefs_.enabled[count]=modifiers?raw:(raw!=settings_catalog()[count].normal_on);++count;
   }
   if(count!=0&&count!=21)throw std::runtime_error("incomplete cheat preferences");
+  // Optional companion preserves native multi-value choices. The main file stays
+  // compatible with the Original/Remastered v0.2 launcher.
+  auto details=path_;details+=".values";
+  if(std::filesystem::is_regular_file(details)&&!std::filesystem::is_symlink(details)){
+   std::ifstream in(details);std::string signature;std::getline(in,signature);
+   if(signature==key(prefs_)){
+    auto values=prefs_.native_raw;unsigned v;bool valid=true;
+    for(auto& item:values){if(!(in>>v)||(v>255&&v!=65535)){valid=false;break;}item=uint16_t(v);}
+    std::string extra;if(in>>extra)valid=false;
+    if(valid)prefs_.native_raw=values;
+   }
+  }
  }
  Preferences preferences()const{std::lock_guard<std::mutex> lock(settings_mutex_);return prefs_;}
  bool desired()const{return preferences().show;}
  std::pair<Preferences,uint64_t> snapshot()const {
   std::lock_guard<std::mutex> lock(settings_mutex_);return {prefs_,revision_};
  }
- bool set(bool value,std::string& error){auto p=preferences();p.show=value;return set(p,error);}
+ bool set(bool value,std::string& error){std::lock_guard<std::mutex> lock(settings_mutex_);auto p=prefs_;p.show=value;return set_locked(p,error);}
+ bool set_enabled(size_t i,bool value,std::string& error){std::lock_guard<std::mutex> lock(settings_mutex_);auto p=prefs_;p.enabled.at(i)=value;p.native_raw.at(i)=65535;return set_locked(p,error);}
+ bool set_all(std::string& error){std::lock_guard<std::mutex> lock(settings_mutex_);auto p=prefs_;enable_all(p);return set_locked(p,error);}
+ bool set_if_revision(const Preferences& value,uint64_t expected,std::string& error){
+  std::lock_guard<std::mutex> lock(settings_mutex_);
+  if(revision_!=expected)return false;
+  return set_locked(value,error);
+ }
  bool set(const Preferences& value,std::string& error) {
   std::lock_guard<std::mutex> lock(settings_mutex_);
+  return set_locked(value,error);
+ }
+private:
+ static std::string key(const Preferences& p){std::string s="native-values=1:";s+=p.show?'1':'0';for(bool b:p.enabled)s+=b?'1':'0';return s;}
+ bool set_locked(const Preferences& value,std::string& error) {
   try {
    if(path_.empty())throw std::runtime_error("no cheat preference path");
    if(std::filesystem::exists(path_)&&(std::filesystem::is_symlink(path_)||!std::filesystem::is_regular_file(path_)))throw std::runtime_error("cheat preference is not a regular file");
    std::filesystem::create_directories(path_.parent_path());auto temp=path_;temp+=".pending";
    if(std::filesystem::exists(temp))throw std::runtime_error("pending cheat preference already exists");
+   auto details=path_;details+=".values";auto pending=details;pending+=".pending";
+   if(std::filesystem::exists(pending)||(std::filesystem::exists(details)&&(std::filesystem::is_symlink(details)||!std::filesystem::is_regular_file(details))))throw std::runtime_error("native cheat values are not writable");
+   {std::ofstream out(pending,std::ios::binary);out<<key(value)<<char(10);for(auto v:value.native_raw)out<<v<<char(10);out.close();if(!out){std::filesystem::remove(pending);throw std::runtime_error("cannot write native cheat values");}}
+#ifdef _WIN32
+   if(!MoveFileExW(pending.c_str(),details.c_str(),MOVEFILE_REPLACE_EXISTING|MOVEFILE_WRITE_THROUGH)){std::filesystem::remove(pending);throw std::runtime_error("cannot replace native cheat values");}
+#else
+   try{std::filesystem::rename(pending,details);}catch(...){std::filesystem::remove(pending);throw;}
+#endif
    {std::ofstream out(temp,std::ios::binary);out<<"cheat-preferences=2"<<char(10)<<"show-cheat-menu="<<value.show<<char(10);
     for(size_t i=0;i<21;++i)out<<"cheat-"<<i<<"="<<value.enabled[i]<<char(10);
     out.close();if(!out){std::filesystem::remove(temp);throw std::runtime_error("cannot write cheat preference");}}

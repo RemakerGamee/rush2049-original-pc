@@ -52,6 +52,9 @@ def prepare(destination,donor,inputs,rom):
         subprocess.run(command[:2] + ['--check'] + command[2:], cwd=source/dependency, check=True)
         subprocess.run(command, cwd=source/dependency, check=True)
     shutil.copy2(PACKAGE/'rush_circuit_flow.h', source/'rt64/src/render/rush_circuit_flow.h')
+    shutil.copy2(PACKAGE/'rush_fullscreen_fill.h',source/'rt64/src/render/rush_fullscreen_fill.h')
+    subprocess.run(['git','apply','--check',str(PACKAGE/'fullscreen-fill.patch')],cwd=source/'rt64',check=True)
+    subprocess.run(['git','apply',str(PACKAGE/'fullscreen-fill.patch')],cwd=source/'rt64',check=True)
     shutil.copy2(PACKAGE/'rush_display_state.h', source/'rt64/src/render/rush_display_state.h')
     subprocess.run(['git','apply',str(PACKAGE/'display-vsync.patch')],cwd=source/'rt64',check=True)
     for folder in ('compat','host','tools'):
@@ -61,7 +64,7 @@ def prepare(destination,donor,inputs,rom):
                       ('pi_pio.cpp','compat'),('si.cpp','compat'),
                       ('runtime_poll.cpp','compat'),('controller_settings_check.cpp','tools')]:
         shutil.copy2(PACKAGE/name,source/path/name)
-    for name in ('lus-imgui-options.hpp', 'lus-imgui-store.hpp', 'lus-imgui-renderer.hpp', 'lus-imgui-check.cpp', 'lus-component.cmake', 'lus-controller-model.hpp', 'lus-controller-ui.hpp', 'controller-presets.hpp', 'controller-accessories.hpp', 'controller-metadata.hpp', 'controller-submission.hpp', 'controller-submission-check.cpp', 'controller_input.hpp', 'controller_manager.hpp', 'input_profile.hpp', 'input_remap.hpp', 'controller_settings_check.cpp', 'runtime_boot_check.cpp', 'cheat_visibility.hpp', 'cheat_native_state.hpp', 'cheat_visibility_window.hpp', 'cheat_options_check.cpp', 'cheat_codes.hpp'):
+    for name in ('rush_fullscreen_fill.h','lus-imgui-options.hpp', 'lus-imgui-store.hpp', 'lus-imgui-renderer.hpp', 'lus-imgui-check.cpp', 'lus-component.cmake', 'lus-controller-model.hpp', 'lus-controller-ui.hpp', 'controller-presets.hpp', 'controller-accessories.hpp', 'controller-metadata.hpp', 'controller-submission.hpp', 'controller-submission-check.cpp', 'controller_input.hpp', 'controller_manager.hpp', 'input_profile.hpp', 'input_remap.hpp', 'controller_settings_check.cpp', 'runtime_boot_check.cpp', 'cheat_visibility.hpp', 'cheat_native_state.hpp', 'cheat_visibility_window.hpp', 'cheat_options_check.cpp', 'cheat_codes.hpp'):
         shutil.copy2(PACKAGE/name,source/'tools'/name)
     shutil.copy2(PACKAGE/'CMakeLists.txt',source/'CMakeLists.txt')
     # These are private generated source inputs, not compiled objects or libraries.

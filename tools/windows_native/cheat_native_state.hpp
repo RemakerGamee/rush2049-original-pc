@@ -30,17 +30,34 @@ class NativeState {
  bool owned_=false;
 public:
  void invalidate(){revision_=0;}
+ void adopt(uint64_t revision){revision_=revision;}
+ template<class Memory> static std::array<uint16_t,21> read(Memory& m) {
+  std::array<uint16_t,21> result{};
+  for(size_t i=0;i<result.size();++i){auto b=native_bindings[i];
+   result[i]=b.byte_address?m.read_byte(b.byte_address):m.read_half(native_values+2*b.row);}
+  return result;
+ }
+ static bool capture_changes(Preferences& p,const std::array<uint16_t,21>& before,const std::array<uint16_t,21>& after) {
+  bool changed=false;
+  if(!p.show)return false;
+  for(size_t i=0;i<after.size();++i)if(before[i]!=after[i]){
+   p.enabled[i]=i==17?after[i]==2:after[i]!=native_bindings[i].off;
+   p.native_raw[i]=after[i];changed=true;
+  }
+  return changed;
+ }
  template<class Memory> bool apply(Memory& m,const Preferences& p,uint64_t revision) {
   if(revision==revision_)return false;
   revision_=revision;
   if(!p.show&&!owned_)return false; // untouched retail startup when opted out
   for(size_t i=0;i<native_bindings.size();++i) {
    const auto b=native_bindings[i];const bool enabled=p.show&&p.enabled[i];
-   const uint8_t raw=enabled?b.on:b.off;
-   m.byte(native_unlocks+b.row,enabled?1:0);
+   const uint16_t raw=p.show&&p.native_raw[i]!=65535?p.native_raw[i]:(enabled?b.on:b.off);
+   // Keep every option adjustable in the native menu, including currently OFF cheats.
+   m.byte(native_unlocks+b.row,p.show?1:0);
    if(b.byte_address)m.byte(b.byte_address,raw);
    // Menu representations of super tires and fog differ from gameplay bytes.
-   const uint16_t display=i==17?(raw==2):i==6?(enabled?1:0):raw;
+   const uint16_t display=i==17?(raw==2):i==6?fog_menu_value(uint8_t(raw)):raw;
    m.half(native_values+2*b.row,display);
   }
   m.byte(native_menu_flag,p.show?1:0);owned_=p.show;

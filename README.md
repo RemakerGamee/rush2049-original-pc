@@ -8,15 +8,16 @@ Play **San Francisco Rush 2049 for Nintendo 64 on Windows PC** with ready-to-ins
 
 Choose the version you want:
 
-| Windows PC version | Public downloads | Original / Remaster choices |
+| Choose one of four Windows downloads | Visuals | Settings interface |
 | --- | --- | --- |
-| **Without libultraship / Dear ImGui — v0.2.0** | [Download the original SDL2/RT64 version](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) | Separate Original and Remastered EXE installers; native Windows settings menus. |
-| **Remastered with libultraship / Dear ImGui — v0.3.0** | [Download the Remastered libultraship package](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.0/Rush2049-Remastered-Libultraship-Package.zip) | Launches Remaster directly; no Original/Remaster chooser. |
-| **Original with libultraship / Dear ImGui — v0.3.0** | [Download the Original libultraship package](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.0/Rush2049-Libultraship-Original-Package.zip) | Original visuals only. |
+| [**Original** — v0.2.0 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.2.0/Rush2049-Original-PC-v0.2.0-Setup.exe) | Original game textures | Native Windows menus; without libultraship / ImGui |
+| [**Remastered** — v0.2.0 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.2.0/Rush2049-Remastered-PC-v0.2.0-Setup.exe) | Restored 4x texture pack and circuit lighting | Native Windows menus; without libultraship / ImGui |
+| [**Original + libultraship / ImGui** — v0.3.1 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.1/Rush2049-Original-Libultraship-PC-v0.3.1-Setup.exe) | Original game textures | Dear ImGui settings and libultraship Config; fullscreen fill |
+| [**Remastered + libultraship / ImGui** — v0.3.1 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.1/Rush2049-Remastered-Libultraship-PC-v0.3.1-Setup.exe) | Restored 4x texture pack and circuit lighting | Dear ImGui settings and libultraship Config; fullscreen fill |
 
-Both versions require your own supported US Nintendo 64 ROM. The instructions and settings below describe **v0.3.0**; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts.
+All four downloads require your own supported US Nintendo 64 ROM. The instructions and settings below describe **v0.3.1**; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts. Earlier [v0.3.0 downloads](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0), including the combined visual-choice installer and dedicated libultraship packages, remain available.
 
-The **Original installer** is smaller and uses original ROM textures. The dedicated **Remastered libultraship installer** includes the reviewed 5,957-texture pack and launches directly with remastered textures and circuit lighting. Both use RT64 and the same settings, controller mappings and retained saves. Historical combined downloads remain available in Releases.
+The **Original installers** are smaller and use original ROM textures. The **Remastered installers** include the reviewed 5,957-texture pack and launch Remaster directly. Original bypasses the replacement pack and remastered circuit lighting; Remaster enables them. The two libultraship / ImGui choices use RT64 and the same settings, controller mappings and retained saves.
 
 Run Setup, browse to your ROM, choose a new installation folder and install. Open the desktop shortcut or `Rush2049Original.exe`. If your ROM moves or changes, select the valid file again. No Python, Git, compiler, driver installation or service changes are needed for players. Use 64-bit Windows and existing Vulkan-capable graphics hardware/drivers.
 
@@ -26,7 +27,7 @@ Saves and controller settings stay outside the installation in `%LOCALAPPDATA%\R
 
 Horizontal settings categories: Interface, Display, Controllers, Diagnostics and Cheats. Shortcuts appear only in the top bar: F1 Interface, F2 Display, F5 Cheats, F8 Controllers, F9 Diagnostics and F11 Fullscreen.
 
-Display offers Standard, 720p, 1080p, 1440p 16:9, 1440p 21:9 (3440×1440) and 4K (3840×2160), plus VSync and presentation targets of 60/120/144/165/180/200/240 Hz. Fullscreen uses the desktop size; presentation targets do not change the monitor's Windows refresh rate.
+Display offers Standard, 720p, 1080p, 1440p 16:9, 1440p 21:9 (3440×1440) and 4K (3840×2160), plus VSync and presentation targets of 60/120/144/165/180/200/240 Hz. Fullscreen uses the desktop size. **Fill screen in fullscreen** defaults to On and stretches the complete game image across the display, including menus; turn it off and Apply and save to preserve the original proportions. Presentation targets do not change the monitor's Windows refresh rate.
 
 The adjustable-window update starts fresh windowed sessions at 800×600. Under Display, select Custom and enter a width and height, or drag the window edges and select Use current window size. Apply and save remembers the choice. Sizes fit the desktop's usable area; changing the window does not change Windows display settings. Existing saved resolution selections remain supported.
 
@@ -34,7 +35,7 @@ Keyboard is enabled by default: Enter Start, Z A, X B, Space Z trigger, arrows s
 
 Controllers includes **Memory Pak / Rumble Pak** selection, applied on the next launch. Memory storage currently attaches to Port 1. Not all controllers support rumble; check the controller manufacturer's specifications. Physical rumble compatibility depends on the device and SDL support.
 
-**Enable cheat menu** works before pressing Start. **Enable all cheats**, directly below it, selects all 21 modifiers; choose **Apply and save** to activate selections. Individual choices remain available. Some modifiers hide the car/track or disable brakes/collisions. Master OFF restores normal modifiers but does not erase rewards already saved by the game.
+**Enable cheat menu** works before pressing Start. **Enable all cheats**, directly below it, selects all 21 modifiers. Cheat controls save and apply automatically. Changes made in the native in-game cheat menu automatically update the launcher, including multi-value choices such as fog color and mass. Every unlocked option remains adjustable even when currently off. Individual choices remain available. Some modifiers hide the car/track or disable brakes/collisions. Master OFF restores normal modifiers but does not erase rewards already saved by the game.
 
 ## Unlisted controllers
 
