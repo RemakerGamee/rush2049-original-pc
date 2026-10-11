@@ -7,10 +7,12 @@ First build the native game from the pinned sources with `tools/windows_native/p
 Create a text-only archive of the repository integration sources, preserving COPYING, dependency pins, patches and generation recipes. Exclude .git, binaries, generated original-game sources, ROMs, expanded images and local texture packs. Then run:
 
 ```powershell
-python tools/windows_installer/build_installer.py --native-root C:\Build\Rush2049 --output C:\Build\Rush2049-Package --source-archive C:\Build\Integration-Source-v0.2.0.zip
+python tools/windows_installer/build_installer.py --native-root C:\Build\Rush2049 --output C:\Build\Rush2049-Package --source-archive C:\Build\Integration-Source-v0.3.0.zip --icon C:\Build\Artwork\rush2049.ico
 ```
 
 Use a new output folder. This requires the documented Visual Studio C++ toolchain and CMake on the maintainer's machine. The installer embeds the compiled game, required app-local DLLs, notices and integration source archive. Setup and launcher link the C++ runtime statically. Check current redistribution terms for the licensed Visual Studio installation before publishing its redistributable DLLs.
+
+Supply a multi-size ICO derived from the approved Rush title artwork, kept outside source Git. The icon is embedded in both Setup and the launcher. Desktop shortcuts explicitly select the launcher's first icon; no separate icon file or player ROM extraction is needed. Include 16, 24, 32, 48, 64, 128 and 256 pixel sizes. Existing installations are preserved. A matching Rush desktop shortcut receives the new icon without changing its target or arguments; unrelated shortcuts are preserved.
 
 For isolated verification, setup accepts `--install --rom PATH --directory NEW_APP --data-dir TEST_DATA --no-shortcut`. The installed launcher accepts `--preflight`, which validates its payload and saved external ROM without starting the game. Test missing, altered and moved ROMs before publishing. Preserve real player data; use private test copies and separate folders. See [binary verification](../../BINARY-VERIFICATION.md).
 

@@ -15,9 +15,13 @@ def command(args,log):
         result=subprocess.run([str(x) for x in args],stdout=stream,stderr=subprocess.STDOUT)
     if result.returncode: raise RuntimeError('Build failed; inspect '+str(log))
 
-def resources(directory,payload,remastered=False):
+def resources(directory,payload,remastered=False,icon=None):
     directory.mkdir(parents=True)
     entries=[];rc=['#include <windows.h>\n']
+    if icon is None: raise ValueError('A maintainer-supplied Windows ICO is required')
+    icon_rc='1 ICON "'+icon.resolve().as_posix()+'"\n'
+    (directory/'icon.rc').write_text(icon_rc)
+    rc.append(icon_rc)
     for index,path in enumerate(sorted(payload.rglob('*')),100):
         if not path.is_file():continue
         name=path.relative_to(payload).as_posix()
@@ -34,8 +38,11 @@ def resources(directory,payload,remastered=False):
     return entries
 
 def main():
-    parser=argparse.ArgumentParser();parser.add_argument('--native-root',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--source-archive',required=True,type=Path);parser.add_argument('--remaster-pack',type=Path);args=parser.parse_args()
+    parser=argparse.ArgumentParser();parser.add_argument('--native-root',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--source-archive',required=True,type=Path);parser.add_argument('--remaster-pack',type=Path)
+    parser.add_argument('--icon',required=True,type=Path,help='Maintainer-supplied multi-size Windows ICO; kept outside source Git')
+    args=parser.parse_args()
     native=args.native_root.resolve();output=args.output.resolve()
+    if not args.icon.is_file() or args.icon.read_bytes()[:4] != b'\x00\x00\x01\x00': raise ValueError('Valid Windows ICO required')
     with zipfile.ZipFile(args.source_archive) as source_zip:
         if source_zip.testzip() is not None or 'tools/windows_native/lus-component.cmake' not in source_zip.namelist():
             raise ValueError('Complete reviewed integration source archive required')
@@ -73,11 +80,11 @@ def main():
     shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.0.zip')
     shutil.copyfile(ROOT/'COPYING',payload/'COPYING')
     shutil.copyfile(ROOT/'README.md',payload/'README.md')
-    table=resources(output/'launcher-resources',payload,bool(args.remaster_pack))
+    table=resources(output/'launcher-resources',payload,bool(args.remaster_pack),args.icon)
     command(['cmake','-S',HERE,'-B',output/'launcher-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_RESOURCE_DIR='+str(output/'launcher-resources')],output/'launcher-configure.log')
     command(['cmake','--build',output/'launcher-build','--config','Release','--parallel','2'],output/'launcher-build.log')
     shutil.copyfile(output/'launcher-build/Release/Rush2049Original.exe',payload/'Rush2049Original.exe')
-    table=resources(output/'setup-resources',payload,bool(args.remaster_pack))
+    table=resources(output/'setup-resources',payload,bool(args.remaster_pack),args.icon)
     command(['cmake','-S',HERE,'-B',output/'setup-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_BUILD_SETUP=ON','-DRUSH_RESOURCE_DIR='+str(output/'setup-resources')],output/'setup-configure.log')
     command(['cmake','--build',output/'setup-build','--config','Release','--parallel','2'],output/'setup-build.log')
     installer=output/('Rush2049-Remastered-PC-v0.3.0-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.0-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
@@ -87,3 +94,4 @@ def main():
     print(json.dumps({'installer':str(installer),'size':installer.stat().st_size,'sha256':manifest['installer_sha256'],'payload_files':len(table)}))
 
 if __name__=='__main__':main()
+

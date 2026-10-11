@@ -124,7 +124,19 @@ static void verify_payload(const fs::path& app) {
 static void shortcut(const fs::path& app) {
     IShellLinkW* link=nullptr;if(FAILED(CoCreateInstance(CLSID_ShellLink,nullptr,CLSCTX_INPROC_SERVER,IID_PPV_ARGS(&link))))return;
     link->SetPath((app/L"Rush2049Original.exe").c_str());link->SetWorkingDirectory(app.c_str());link->SetDescription(payload::edition);
-    IPersistFile* file=nullptr;if(SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&file)))){const auto path=known(FOLDERID_Desktop)/(payload::remastered?L"Rush 2049 Remastered v0.3.lnk":L"Rush 2049 Original v0.3.lnk");if(!fs::exists(path))file->Save(path.c_str(),TRUE);file->Release();}link->Release();
+    link->SetIconLocation((app/L"Rush2049Original.exe").c_str(),0);
+    IPersistFile* file=nullptr;if(SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&file)))){
+        const auto path=known(FOLDERID_Desktop)/(payload::remastered?L"Rush 2049 Remastered v0.3.lnk":L"Rush 2049 Original v0.3.lnk");
+        if(!fs::exists(path))file->Save(path.c_str(),TRUE);
+        else if(SUCCEEDED(file->Load(path.c_str(),STGM_READWRITE))){
+            wchar_t existing[MAX_PATH]{};
+            if(SUCCEEDED(link->GetPath(existing,MAX_PATH,nullptr,SLGP_RAWPATH)) && fs::path(existing).filename()==L"Rush2049Original.exe"){
+                // Refresh our existing shortcut's icon while retaining its target and arguments.
+                link->SetIconLocation((app/L"Rush2049Original.exe").c_str(),0);file->Save(path.c_str(),TRUE);
+            }
+        }
+        file->Release();
+    }link->Release();
 }
 static void install_app(const fs::path& destination,const fs::path& rom,const fs::path& data,bool desktop) {
     // ROM gate precedes every installation/data-directory write.
@@ -257,7 +269,7 @@ int WINAPI wWinMain(HINSTANCE app,HINSTANCE,LPWSTR,int show) {
         LocalFree(argv);argv=nullptr;
 #ifdef RUSH_SETUP
         if(installMode){if(romPath.empty())throw std::runtime_error("A supported original US ROM is required BEFORE installation.");install_app(rootPath,romPath,dataPath,!noShortcut);CoUninitialize();return 0;}
-        WNDCLASSW klass{};klass.hInstance=instance;klass.lpfnWndProc=window_proc;klass.lpszClassName=L"Rush2049OriginalInstaller";klass.hCursor=LoadCursorW(nullptr,IDC_ARROW);klass.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_WINDOW+1);RegisterClassW(&klass);
+        WNDCLASSW klass{};klass.hInstance=instance;klass.lpfnWndProc=window_proc;klass.lpszClassName=L"Rush2049OriginalInstaller";klass.hCursor=LoadCursorW(nullptr,IDC_ARROW);klass.hIcon=LoadIconW(instance,MAKEINTRESOURCEW(1));klass.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_WINDOW+1);RegisterClassW(&klass);
         auto window=CreateWindowExW(WS_EX_APPWINDOW,klass.lpszClassName,payload::edition,WS_OVERLAPPED|WS_CAPTION|WS_SYSMENU|WS_MINIMIZEBOX,CW_USEDEFAULT,CW_USEDEFAULT,632,390,nullptr,nullptr,instance,nullptr);
         if(!window)throw std::runtime_error("Cannot open the installer window.");ShowWindow(window,show);MSG message{};while(GetMessageW(&message,nullptr,0,0)>0){if(!IsDialogMessageW(window,&message)){TranslateMessage(&message);DispatchMessageW(&message);}}CoUninitialize();return 0;
 #else
