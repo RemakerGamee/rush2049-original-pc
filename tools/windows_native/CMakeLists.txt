@@ -17,7 +17,7 @@ file(GLOB RSP RecompiledRsp/*.cpp)
 add_executable(RushWindowsRT64 tools/runtime_boot_check.cpp host/renderer_bridge.cpp ${COMPAT} ${RSP} $<TARGET_OBJECTS:rush_guest>)
 target_include_directories(RushWindowsRT64 PRIVATE N64Recomp/include RecompiledFuncs-probe RecompiledRsp rt64/src rt64/src/contrib rt64/src/contrib/xxHash ${SDLROOT}/include)
 target_link_directories(RushWindowsRT64 PRIVATE ${SDLROOT}/lib/x64)
-target_link_libraries(RushWindowsRT64 PRIVATE librecomp ultramodern rt64 SDL2)
+target_link_libraries(RushWindowsRT64 PRIVATE librecomp ultramodern rt64 SDL2 bcrypt)
 target_compile_options(RushWindowsRT64 PRIVATE /O2)
 add_custom_command(TARGET RushWindowsRT64 POST_BUILD
 COMMAND ${CMAKE_COMMAND} -E copy_if_different "${SDLROOT}/lib/x64/SDL2.dll" "$<TARGET_FILE_DIR:RushWindowsRT64>"

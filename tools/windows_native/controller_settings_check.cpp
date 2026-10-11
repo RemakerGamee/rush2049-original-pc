@@ -15,6 +15,16 @@ static void lifecycle(){
  SDL_VirtualJoystickDesc desc{};desc.version=SDL_VIRTUAL_JOYSTICK_DESC_VERSION;desc.type=SDL_JOYSTICK_TYPE_UNKNOWN;desc.naxes=4;desc.nbuttons=13;desc.nhats=1;desc.vendor_id=0xf123;desc.product_id=1;desc.name="Rush isolated virtual one";
  int one=SDL_JoystickAttachVirtualEx(&desc);verify(one>=0,"attach one");char guid1[33]{};SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(one),guid1,33);
  desc.product_id=2;desc.name="Rush isolated virtual two";int two=SDL_JoystickAttachVirtualEx(&desc);verify(two>=0,"attach two");char guid2[33]{};SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(two),guid2,33);
+ // Exercise the actual native preset and per-button capture helpers without opening a UI.
+ {NativeInputWindow ui;ui.changed={};ui.select_device(one);verify(ui.joystick!=nullptr,"preset device open");
+  ui.apply_preset(1,one);verify(ui.profile.bindings[size_t(Button::Start)][0].index==12,"wired N64 default Start");
+  verify(ui.profile.bindings[size_t(Button::A)][0].index==2,"wired N64 default A");
+  ui.apply_preset(2,one);verify(ui.profile.bindings[size_t(Button::Start)][0].index==9,"wireless N64 default Start");
+  verify(ui.profile.bindings[size_t(Button::CUp)][0].index==11,"wireless N64 default C-Up");
+  ui.begin_capture(int(Button::A));SDL_Event capture{};capture.type=SDL_JOYBUTTONDOWN;capture.jbutton.which=SDL_JoystickInstanceID(ui.joystick);capture.jbutton.button=7;ui.capture_event(capture);
+  verify(ui.profile.bindings[size_t(Button::A)][0].index==7,"custom captured button replaces preset");
+  verify(!validate_profile(ui.profile,{13,4,1}).has_value(),"custom N64 preset validates");
+  SDL_JoystickClose(ui.joystick);ui.joystick=nullptr;}
  Config c;for(int port=0;port<2;++port){Profile p;p.id="virtual"+std::to_string(port);p.guid=port?guid2:guid1;p.stick_x={true,0,false};p.stick_y={true,1,true};p.bindings[size_t(Button::A)]={{BindKind::Button,2}};p.bindings[size_t(Button::B)]={{BindKind::Button,1}};c.profiles.push_back(p);c.assignments[p.guid]=port;}
  rush::keyboard::Input keyboard;System sys(keyboard,c,{},{});sys.manager().device_added(one);sys.manager().device_added(two);
  SDL_Joystick* j1=SDL_JoystickOpen(one);SDL_Joystick* j2=SDL_JoystickOpen(two);verify(j1&&j2,"setters open");

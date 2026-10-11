@@ -133,7 +133,13 @@ inline int remap_dialog(SDL_Window* parent, const char* title, const std::string
     return selected;
 }
 // UI belongs to the port's System; physical events always use raw SDL indices.
+#ifdef _WIN32
+#include "windows_input_ui.hpp"
+#endif
 inline std::optional<Config> run_input_remapping(SDL_Window* parent, const Config& original) {
+#ifdef _WIN32
+    NativeInputWindow ui;return ui.run(original);
+#else
     if (SDL_NumJoysticks() <= 0) {
         SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION, "Controller setup", "Connect a controller, then press F8 again.", parent);
         return {};
@@ -153,6 +159,31 @@ inline std::optional<Config> run_input_remapping(SDL_Window* parent, const Confi
     Profile profile;
     profile.id = std::string("pad-") + guid; profile.guid = guid; profile.deadzone = original.deadzone;
     for (const auto& existing : original.profiles) if (!existing.game_controller && existing.guid == guid) profile = existing;
+    const int preset=remap_dialog(parent,"Controller preset","Choose a starting layout. Every button and both stick axes can be changed afterward. N64 USB layouts vary by adapter.",
+        {"Custom / current","N64 KIWITATA","N64 SAFFUN","Xbox One / SDL","Cancel"});
+    if(preset<0 || preset==4)return {};
+    if(preset==1 || preset==2){
+        profile.bindings={};profile.stick_x={true,0,false};profile.stick_y={true,1,true};
+        const int buttons[]={2,1,preset==1?12:9,6,4,5,-1,-1,-1,-1,preset==1?9:11,3,0,preset==1?8:10};
+        for(size_t i=0;i<button_count;++i)if(buttons[i]>=0)profile.bindings[i]={{BindKind::Button,buttons[i]}};
+        const uint8_t masks[]={1,4,8,2};for(int i=0;i<4;++i)profile.bindings[6+i]={{BindKind::Hat,0,masks[i]}};
+    }
+    if(preset==3){
+        SDL_GameController* controller=SDL_IsGameController(selected)?SDL_GameControllerOpen(selected):nullptr;
+        if(!controller){SDL_ShowSimpleMessageBox(SDL_MESSAGEBOX_INFORMATION,"Xbox preset unavailable","SDL does not recognise this controller's Xbox layout. Use Custom to map each control.",parent);}
+        else {
+            profile=default_game_controller_profile();profile.id=std::string("pad-")+guid;profile.guid=guid;profile.game_controller=false;
+            for(auto& bindings:profile.bindings)for(auto& binding:bindings){
+                const auto raw=binding.kind==BindKind::Button?SDL_GameControllerGetBindForButton(controller,SDL_GameControllerButton(binding.index)):SDL_GameControllerGetBindForAxis(controller,SDL_GameControllerAxis(binding.index));
+                if(raw.bindType==SDL_CONTROLLER_BINDTYPE_BUTTON){binding.kind=BindKind::Button;binding.index=raw.value.button;}
+                else if(raw.bindType==SDL_CONTROLLER_BINDTYPE_AXIS){binding.kind=BindKind::Axis;binding.index=raw.value.axis;}
+                else if(raw.bindType==SDL_CONTROLLER_BINDTYPE_HAT){binding.kind=BindKind::Hat;binding.index=raw.value.hat.hat;binding.hat_mask=raw.value.hat.hat_mask;}
+                else {binding.index=-1;}
+            }
+            for(auto axis:{&profile.stick_x,&profile.stick_y}){const auto raw=SDL_GameControllerGetBindForAxis(controller,SDL_GameControllerAxis(axis->axis));axis->set=raw.bindType==SDL_CONTROLLER_BINDTYPE_AXIS;if(axis->set)axis->axis=raw.value.axis;}
+            SDL_GameControllerClose(controller);
+        }
+    }
     int page = 0;
     while (true) {
         std::vector<std::string> choices;
@@ -241,5 +272,6 @@ inline std::optional<Config> run_input_remapping(SDL_Window* parent, const Confi
             SDL_WaitEventTimeout(&released, 50);
         }
     }
+#endif
 }
 }

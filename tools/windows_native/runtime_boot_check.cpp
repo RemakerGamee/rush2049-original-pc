@@ -1,4 +1,5 @@
 #include <algorithm>
+#include "rom_identity.hpp"
 #include "recomp_overlays.inl"
 #include "librecomp/game.hpp"
 #include "librecomp/overlays.hpp"
@@ -34,6 +35,7 @@ uint64_t completed_bytes() const { return 0; }
 };
 #include "keyboard_input.hpp"
 #include "controller_input.hpp"
+#include "pc_menu.hpp"
 #include <memory>
 
 extern ultramodern::renderer::callbacks_t rush_renderer_callbacks();
@@ -351,8 +353,7 @@ extern "C" void rush_diagnostic_graphics_processed(uint32_t list, uint32_t size)
     std::_Exit(49);
 }
 static std::atomic<bool> game_code_verified{false};
-static std::vector<uint8_t> expected_game;
-static std::vector<uint8_t> expected_overlay_a, expected_overlay_b;
+static constexpr size_t expected_game_size=647072;
 static std::atomic<bool> scheduler_created{false};
 static std::atomic<bool> scheduler_entered{false};
 static std::atomic<bool> pi_ready{false}, vi_ready{false}, init_created{false};
@@ -639,13 +640,12 @@ extern "C" void inflate_entry(uint8_t* rdram, recomp_context* ctx) {
     const auto source = uint32_t(ctx->r4), destination = uint32_t(ctx->r5);
     rush_real_inflate_entry(rdram, ctx);
     if (destination != 0x8038A400) return;
-    const auto* expected = source == 0xB5C534 ? &expected_overlay_a :
-        source == 0xB6FEC4 ? &expected_overlay_b : nullptr;
-    require(expected && !expected->empty(), "unrecognized executable overlay source");
-    for (size_t i = 0; i < expected->size(); ++i)
-        require(rdram[(0x38A400 + i) ^ 3] == (*expected)[i], "guest overlay differs from verified image");
-    load_overlays(source == 0xB5C534 ? 0xC9DFA0 : 0xCCD5F0, int32_t(destination), expected->size());
-    std::printf("GUEST_OVERLAY_REGISTERED: source=0x%08X destination=0x%08X, all %zu bytes verified.\n", source, destination, expected->size());
+    const size_t count=source==0xB5C534?194128:source==0xB6FEC4?43888:0;
+    const char* digest=source==0xB5C534?"0d6702c320df84cc6cbc3c5967dde08d44b6e476e110667fe2a43dc2dd536667":
+        "b55fc2d1b22eb1ebdf01286a69a181b496da7b45ff7aec888ff74b7db748e7cd";
+    require(count && rush::rom::guest_image(rdram,0x38A400,count,digest), "guest overlay differs from verified image");
+    load_overlays(source==0xB5C534?0xC9DFA0:0xCCD5F0,int32_t(destination),count);
+    std::printf("GUEST_OVERLAY_REGISTERED: source=0x%08X destination=0x%08X, SHA256 verified %zu bytes.\n",source,destination,count);
 }
 extern "C" void rush_real_bzero_recomp(uint8_t*, recomp_context*);
 extern "C" void bzero_recomp(uint8_t* rdram, recomp_context* ctx) {
@@ -653,12 +653,12 @@ extern "C" void bzero_recomp(uint8_t* rdram, recomp_context* ctx) {
     rush_real_bzero_recomp(rdram, ctx);
     if (check_decompress && address == 0x801249F0 && size == 0x55C50) {
         require(scheduler_created && scheduler_entered, "scheduler did not execute before decompression");
-        require(expected_game.size() == 0x9DFA0, "incorrect reference game size");
-        for (size_t i = 0; i < expected_game.size(); ++i)
-            require(rdram[(0x86A50 + i) ^ 3] == expected_game[i], "guest-decompressed game differs from verified image");
+        require(rush::rom::guest_image(rdram,0x86A50,expected_game_size,
+            "bf7da3fa6283428a97372250cd4076d15e9eae10f9d5709c0387fe0742d43a1d"),
+            "guest-decompressed game differs from verified image");
         for (uint32_t i = 0; i < size; ++i)
             require(rdram[(0x1249F0 + i) ^ 3] == 0, "game BSS not cleared");
-        load_overlays(0xC00000, int32_t(0x80086A50), expected_game.size());
+        load_overlays(0xC00000, int32_t(0x80086A50), expected_game_size);
         std::printf("Native decompression used %u bounded ROM DMA transfers.\n", rom_dma_count);
         std::puts("GUEST_CODE_DECOMPRESSED: native guest decompressor output matches all 647072 verified bytes; game BSS cleared.");
         native_phase("game_code_verified");
@@ -689,6 +689,8 @@ static void update_window(void*) {
     }
     SDL_Event event;
       while (SDL_PollEvent(&event)) {
+          if(rush::pc::event(event))continue;
+          if(event.type==rush::pc::action_event && event.user.code==300){controller_input->open_remapping(rush::pc::game);continue;}
           if (controller_input) controller_input->handle_event(event);
           else keyboard_input.handle_event(event);
           if (event.type == SDL_QUIT) { std::puts("NATIVE_QUIT_REQUESTED"); ultramodern::quit(); return; }
@@ -702,12 +704,23 @@ static void update_window(void*) {
           }
       }
       const uint64_t dropped_taps = keyboard_input.take_dropped_tap_count();
+      if(const int action=rush::pc::pending.exchange(0)){if(action==300)controller_input->open_remapping(rush::pc::game);else if(action==401)rush::pc::popup(rush::pc::cheatMenu);else if(action==409)rush::pc::popup(rush::pc::displayMenu);else rush::pc::command(action);}
       if (dropped_taps != 0)
           std::fprintf(stderr, "Keyboard input queue full; dropped %llu short tap(s).\n",
               (unsigned long long)dropped_taps);
 }
 extern "C" bool rush_controller_pak_attached();
-int main(int argc, char** argv) {
+int wmain(int argc, wchar_t** wide_argv) {
+    require(argc==3 || argc==4,"pass the external ROM path and player profile directory");
+    std::vector<std::string> arguments;
+    std::vector<char*> argument_pointers;
+    for(int i=0;i<argc;++i)arguments.push_back(rush::rom::utf8(wide_argv[i]));
+    for(auto& argument:arguments)argument_pointers.push_back(argument.data());
+    char** argv=argument_pointers.data();
+    std::unique_ptr<rush::rom::File> external_rom;
+    try { external_rom=std::make_unique<rush::rom::File>(std::filesystem::path(wide_argv[1])); }
+    catch(const std::exception& error) {std::fprintf(stderr,"ROM_REQUIRED: %s\n",error.what());return 65;}
+    std::puts("EXTERNAL_ROM_VERIFIED: original US ROM read from selected location; no stored ROM fallback");
     try { (void)rush_controller_pak_attached(); }
     catch (const std::exception& error) {
         std::fprintf(stderr, "Controller Pak initialization failed: %s\n", error.what());
@@ -733,25 +746,11 @@ int main(int argc, char** argv) {
         check_render_loop = std::string_view(argv[3]) == "render-loop" || check_graphics_task;
         check_game_code = std::string_view(argv[3]) == "game-code" || check_render_loop;
         check_decompress = std::string_view(argv[3]) == "decompress" || check_game_code;
-        if (check_decompress) {
-            std::ifstream expanded("recomp-input/rush2049-all-images.bin", std::ios::binary);
-            expanded.seekg(0xC00000);
-            expected_game.resize(0x9DFA0);
-            expanded.read(reinterpret_cast<char*>(expected_game.data()), expected_game.size());
-            require(expanded.good(), "cannot read verified game image");
-            expected_overlay_a.resize(194128);
-            expanded.read(reinterpret_cast<char*>(expected_overlay_a.data()), expected_overlay_a.size());
-            expected_overlay_b.resize(43888);
-            expanded.read(reinterpret_cast<char*>(expected_overlay_b.data()), expected_overlay_b.size());
-            require(expanded.good(), "cannot read verified overlay images");
-        }
     }
     std::setvbuf(stdout, nullptr, _IONBF, 0);
-    std::ifstream file(argv[1], std::ios::binary);
-    std::vector<uint8_t> rom((std::istreambuf_iterator<char>(file)), {});
-    require(rom.size() == 0xC00000, "incorrect ROM size");
-    std::filesystem::create_directories(argv[2]);
-    recomp::register_config_path(argv[2]);
+    auto rom=external_rom->bytes;
+    std::filesystem::create_directories(wide_argv[2]);
+    recomp::register_config_path(std::filesystem::path(wide_argv[2]));
     recomp::GameEntry game{};
     game.rom_hash = XXH3_64bits(rom.data(), rom.size());
     game.internal_name.assign(reinterpret_cast<const char*>(rom.data() + 0x20), 20);
@@ -761,12 +760,12 @@ int main(int argc, char** argv) {
     game.entrypoint_address = int64_t(int32_t(0x80000400u));
     game.entrypoint = guest_entry;
     require(recomp::register_game(game), "game registration failed");
-    require(recomp::select_rom(argv[1], game.game_id) == recomp::RomValidationError::Good, "ROM selection failed");
+    require(recomp::select_rom(std::filesystem::path(wide_argv[1]), game.game_id, false) == recomp::RomValidationError::Good, "ROM selection failed");
     recomp::set_rom_contents(std::move(rom));
     recomp::overlays::register_overlays({section_table, num_sections, num_sections}, {nullptr, 0});
     require(SDL_Init(SDL_INIT_VIDEO | rush::input::sdl_init_flags | (check_startup_run && !audio_windows_output ? SDL_INIT_AUDIO : 0)) == 0, SDL_GetError());
     controller_input = std::make_unique<rush::input::System>(keyboard_input);
-    auto* window = SDL_CreateWindow("Rush 2049 Original Visual Remaster", SDL_WINDOWPOS_UNDEFINED,
+    auto* window = SDL_CreateWindow(_wgetenv(L"RUSH_REMASTER_TEXTURE_PACK")?"Rush 2049 Remastered 4x":"Rush 2049 Original PC", SDL_WINDOWPOS_UNDEFINED,
         SDL_WINDOWPOS_UNDEFINED, 640, 480, SDL_WINDOW_VULKAN | (check_framebuffer ? 0 : SDL_WINDOW_HIDDEN));
     require(window != nullptr, SDL_GetError());
     recomp::Configuration cfg{};
@@ -774,6 +773,7 @@ int main(int argc, char** argv) {
     SDL_SysWMinfo native{};
     SDL_VERSION(&native.version);
     require(SDL_GetWindowWMInfo(window, &native) == SDL_TRUE, SDL_GetError());
+    if(check_startup_run)rush::pc::attach(window,native.info.win.window,std::filesystem::path(wide_argv[2]).parent_path());
     ShowWindow(native.info.win.window, SW_SHOW);
     cfg.window_handle = {native.info.win.window, GetCurrentThreadId()};
     cfg.rsp_callbacks = rush_rsp_callbacks();
@@ -790,6 +790,7 @@ int main(int argc, char** argv) {
         };
         cfg.input_callbacks.get_input = [](int port, uint16_t* buttons, float* x, float* y) {
             if (!controller_input || !controller_input->get_input(port, buttons, x, y)) return false;
+            if(port==0){uint16_t cheat_buttons=0;if(rush::pc::playback.sample(steady_ms(),cheat_buttons)){*buttons=cheat_buttons;*x=*y=0;}}
             if(port == 0 && steady_ms()<native_script_deadline.load()) {
                 *buttons|=native_script_buttons.load();
                 *x=native_script_x.load(); *y=native_script_y.load();
@@ -865,6 +866,7 @@ int main(int argc, char** argv) {
     std::puts("NATIVE_RUNTIME_RETURNED: shutdown completed");
     controller_input->manager().shutdown();
     controller_input.reset();
+    rush::pc::detach();
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

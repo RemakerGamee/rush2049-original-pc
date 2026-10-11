@@ -44,6 +44,7 @@ def prepare(destination,donor,inputs,rom):
     for relative,asset in pins['N64ModernRuntime'].get('added_headers',{}).items():
         shutil.copy2(PACKAGE/asset,source/'N64ModernRuntime'/relative)
     subprocess.run(['git','apply',str(PACKAGE/'completion-dependency.patch')],cwd=source/'N64ModernRuntime',check=True)
+    subprocess.run(['git','apply',str(PACKAGE/'external-rom.patch')],cwd=source/'N64ModernRuntime',check=True)
     # Reviewed remaster changes are recipes applied to pinned clean sources.
     for dependency, patch in (('N64ModernRuntime', 'remaster-shutdown.patch'),
                               ('rt64', 'remaster-circuit.patch')):
@@ -51,6 +52,8 @@ def prepare(destination,donor,inputs,rom):
         subprocess.run(command[:2] + ['--check'] + command[2:], cwd=source/dependency, check=True)
         subprocess.run(command, cwd=source/dependency, check=True)
     shutil.copy2(PACKAGE/'rush_circuit_flow.h', source/'rt64/src/render/rush_circuit_flow.h')
+    shutil.copy2(PACKAGE/'rush_display_state.h', source/'rt64/src/render/rush_display_state.h')
+    subprocess.run(['git','apply',str(PACKAGE/'display-vsync.patch')],cwd=source/'rt64',check=True)
     for folder in ('compat','host','tools'):
         shutil.copytree(REPO/folder,source/folder,ignore=shutil.ignore_patterns('__pycache__','windows_native'))
     for name,path in [('runtime_boot_check.cpp','tools'),('renderer_bridge.cpp','host'),
@@ -63,6 +66,8 @@ def prepare(destination,donor,inputs,rom):
     for folder in ('RecompiledFuncs-probe','RecompiledRsp'):
         shutil.copytree(inputs/folder,source/folder,ignore=shutil.ignore_patterns('*.o','*.obj','*.a','*.lib','build','CMakeFiles'))
     shutil.copy2(PACKAGE/'jet_sound_gain.h', source/'tools/jet_sound_gain.h')
+    shutil.copy2(PACKAGE/'rom_identity.hpp', source/'tools/rom_identity.hpp')
+    shutil.copy2(PACKAGE/'pc_menu.hpp', source/'tools/pc_menu.hpp')
     from remaster_guest import apply_remaster
     apply_remaster(source/'RecompiledFuncs-probe')
     (source/'recomp-input').mkdir()

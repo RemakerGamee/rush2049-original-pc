@@ -17,6 +17,7 @@
 #include "hle/rt64_rdp.h"
 #include <array>
 #include <stdexcept>
+#include "render/rush_display_state.h"
 
 namespace {
 using namespace ultramodern::renderer;
@@ -85,8 +86,8 @@ public:
                 app->state->dumpingTexturesDirectory = path;
                 std::puts("REMASTER_CAPTURE_ENABLED: original RT64 texture dumps");
             }
-            if (const char* pack = std::getenv("RUSH_REMASTER_TEXTURE_PACK")) {
-                const auto path = std::filesystem::u8path(pack);
+            if (const wchar_t* pack = _wgetenv(L"RUSH_REMASTER_TEXTURE_PACK")) {
+                const auto path = std::filesystem::path(pack);
                 if (!path.is_absolute() || !std::filesystem::exists(path))
                     throw std::runtime_error("Remaster pack requires an existing absolute path");
                 if (!app->textureCache->loadReplacementDirectory(RT64::ReplacementDirectory(path)))
@@ -114,10 +115,11 @@ public:
         auto& user = app->userConfig;
         using U = RT64::UserConfiguration;
         user.developerMode = cfg.developer_mode;
-        user.resolution = cfg.res_option == Resolution::Auto ? U::Resolution::WindowIntegerScale : U::Resolution::Manual;
-        user.resolutionMultiplier = cfg.res_option == Resolution::Original2x ? 2.0 : 1.0;
+        const auto preset=rush::display::presets[rush::display::selected.load()];
+        user.resolution = U::Resolution::Manual;
+        user.resolutionMultiplier = double(preset.height)/240.0;
         user.downsampleMultiplier = std::max(cfg.ds_option, 1);
-        user.aspectRatio = static_cast<U::AspectRatio>(cfg.ar_option);
+        user.aspectRatio = U::AspectRatio::Manual;user.aspectTarget=double(preset.width)/preset.height;
         user.refreshRate = static_cast<U::RefreshRate>(cfg.rr_option);
         user.refreshRateTarget = std::max(cfg.rr_manual_value, 1);
         user.internalColorFormat = cfg.hpfb_option == HighPrecisionFramebuffer::On ? U::InternalColorFormat::High :
@@ -127,7 +129,7 @@ public:
         user.validate();
         if (oldMSAA != user.antialiasing) app->updateMultisampling();
         app->updateUserConfig(false);
-        app->setFullScreen(cfg.wm_option == WindowMode::Fullscreen);
+        app->setFullScreen(rush::display::fullscreen.load());
         return true;
     }
     void enable_instant_present() override {
@@ -166,7 +168,16 @@ public:
         app->state->advanceWorkload(work, false);
         queue.advanceToNextWorkload();
     }
-    void update_screen() override { if (ready) app->updateScreen(); }
+    void update_screen() override {
+        if(!ready)return;
+        static unsigned applied=0;const unsigned revision=rush::display::revision.load();
+        if(applied!=revision){const auto preset=rush::display::presets[rush::display::selected.load()];using U=RT64::UserConfiguration;
+            app->userConfig.resolution=U::Resolution::Manual;app->userConfig.resolutionMultiplier=double(preset.height)/240.0;
+            app->userConfig.aspectRatio=U::AspectRatio::Manual;app->userConfig.aspectTarget=double(preset.width)/preset.height;
+            app->userConfig.validate();app->updateUserConfig(false);applied=revision;
+            std::printf("DISPLAY_PRESET_APPLIED: %d x %d\n",preset.width,preset.height);}
+        app->updateScreen();
+    }
     void shutdown() override {
         if (app) { std::puts("NATIVE_RT64_SHUTDOWN_BEGIN"); app->end(); app.reset(); std::puts("NATIVE_RT64_SHUTDOWN_END"); }
         ready = false;

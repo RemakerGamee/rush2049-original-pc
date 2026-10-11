@@ -1,0 +1,55 @@
+--- a/librecomp/include/librecomp/game.hpp
++++ b/librecomp/include/librecomp/game.hpp
+@@ -88,7 +88,7 @@
+     bool register_game(const recomp::GameEntry& entry);
+     void check_all_stored_roms();
+     bool load_stored_rom(const std::u8string& game_id);
+-    RomValidationError select_rom(const std::filesystem::path& rom_path, const std::u8string& game_id);
++    RomValidationError select_rom(const std::filesystem::path& rom_path, const std::u8string& game_id, bool store_copy = true);
+     bool is_rom_valid(const std::u8string& game_id);
+     bool is_rom_loaded();
+     void set_rom_contents(std::vector<uint8_t>&& new_rom);
+--- a/librecomp/src/recomp.cpp
++++ b/librecomp/src/recomp.cpp
+@@ -194,7 +194,10 @@
+     return true;
+ }
+ 
++static std::unordered_map<std::u8string,std::vector<uint8_t>> external_game_roms;
+ bool check_stored_rom(const recomp::GameEntry& game_entry) {
++    if(auto found=external_game_roms.find(game_entry.game_id);found!=external_game_roms.end())
++        return check_hash(found->second,game_entry.rom_hash);
+     std::vector stored_rom_data = read_file(config_path / game_entry.stored_filename());
+ 
+     if (!check_hash(stored_rom_data, game_entry.rom_hash)) {
+@@ -227,6 +230,11 @@
+         return false;
+     }
+     
++    if(auto external=external_game_roms.find(game_id);external!=external_game_roms.end()) {
++        if(!check_hash(external->second,find_it->second.rom_hash))return false;
++        recomp::set_rom_contents(std::vector<uint8_t>(external->second));
++        return true;
++    }
+     std::vector<uint8_t> stored_rom_data = read_file(config_path / find_it->second.stored_filename());
+ 
+     if (!check_hash(stored_rom_data, find_it->second.rom_hash)) {
+@@ -357,7 +365,7 @@
+     }
+ }
+ 
+-recomp::RomValidationError recomp::select_rom(const std::filesystem::path& rom_path, const std::u8string& game_id) {
++recomp::RomValidationError recomp::select_rom(const std::filesystem::path& rom_path, const std::u8string& game_id, bool store_copy) {
+     auto find_it = game_roms.find(game_id);
+ 
+     if (find_it == game_roms.end()) {
+@@ -405,7 +413,8 @@
+         }
+     }
+ 
+-    write_file(config_path / game_entry.stored_filename(), rom_data);
++    if(store_copy)write_file(config_path / game_entry.stored_filename(),rom_data);
++    else external_game_roms[game_id]=std::move(rom_data);
+     
+     return recomp::RomValidationError::Good;
+ }

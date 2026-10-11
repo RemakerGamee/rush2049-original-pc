@@ -1,0 +1,15 @@
+--- a/src/hle/rt64_present_queue.cpp
++++ b/src/hle/rt64_present_queue.cpp
+@@ -1,3 +1,4 @@
++#include "render/rush_display_state.h"
+ //
+ // RT64
+ //
+@@ -466,6 +467,7 @@
+ 
+             if (processCursor >= 0) {
+                 std::unique_lock<std::mutex> threadLock(threadMutex);
++                ext.swapChain->setVsyncEnabled(rush::display::vsync.load());
+                 const bool needsResize = ext.swapChain->needsResize() || !swapChainValid;
+                 if (needsResize) {
+                     ext.presentGraphicsWorker->commandList->begin();
