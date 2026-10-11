@@ -5,7 +5,7 @@
  //
  // RT64
  //
-@@ -70,6 +71,9 @@
+@@ -70,5 +71,8 @@
          RenderViewport viewport;
          RenderRect scissor;
          getViewportAndScissor(p.swapChain, *p.vi, p.resolutionScale, p.downsamplingScale, p.removeBlackBorders, viewport, scissor);
@@ -14,4 +14,3 @@
 +        }
          p.commandList->setViewports(viewport);
          p.commandList->setScissors(scissor);
- 
