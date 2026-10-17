@@ -19,9 +19,9 @@ Choose the version you want:
 | [**Original** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Original-PC-v0.3.2-Setup.exe) | Original game textures | Native Windows menus; without libultraship / ImGui |
 | [**Remastered** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Remastered-PC-v0.3.2-Setup.exe) | Restored 4x texture pack and circuit lighting | Native Windows menus; without libultraship / ImGui |
 | [**Original + libultraship / ImGui** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Original-Libultraship-PC-v0.3.2-Setup.exe) | Original game textures | Dear ImGui settings and libultraship Config; fullscreen fill |
-| [**Remastered + libultraship / ImGui** — v0.3.2 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.2/Rush2049-Remastered-Libultraship-PC-v0.3.2-Setup.exe) | Restored 4x texture pack and circuit lighting | Dear ImGui settings and libultraship Config; fullscreen fill |
+| [**Remastered + libultraship / ImGui** — v0.3.3 EXE](https://github.com/RemakerGamee/rush2049-original-pc/releases/download/v0.3.3/Rush2049-Remastered-Libultraship-PC-v0.3.3-Setup.exe) | Restored 4x texture pack and circuit lighting | Dear ImGui settings and libultraship Config; Updates, Support and offline rollback |
 
-All four downloads require your own supported US Nintendo 64 ROM. v0.3.2 updates the artwork icons and credit in all four installers; the native-menu game retains the v0.2.0 core and the libultraship/ImGui game retains the v0.3.1 core. The instructions and settings below describe the libultraship/ImGui choices; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts. Earlier [v0.3.0 downloads](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0), including the combined visual-choice installer and dedicated libultraship packages, remain available.
+All four downloads require your own supported US Nintendo 64 ROM. **Remastered + libultraship / ImGui v0.3.3** adds Updates, Support and verified offline rollback. The other three downloads remain at v0.3.2. v0.3.2 updates the artwork icons and credit in all four installers; the native-menu game retains the v0.2.0 core and the libultraship/ImGui game retains the v0.3.1 core. The instructions and settings below describe the libultraship/ImGui choices; the [v0.2.0 release notes](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.2.0) describe its native menus and shortcuts. Earlier [v0.3.0 downloads](https://github.com/RemakerGamee/rush2049-original-pc/releases/tag/v0.3.0), including the combined visual-choice installer and dedicated libultraship packages, remain available.
 
 The **Original installers** are smaller and use original ROM textures. The **Remastered installers** include the reviewed 5,957-texture pack and launch Remaster directly. Original bypasses the replacement pack and remastered circuit lighting; Remaster enables them. The two libultraship / ImGui choices use RT64 and the same settings, controller mappings and retained saves.
 
@@ -31,7 +31,7 @@ Saves and controller settings stay outside the installation in `%LOCALAPPDATA%\R
 
 ## Settings and controls
 
-Horizontal settings categories: Interface, Display, Controllers, Diagnostics and Cheats. Shortcuts appear only in the top bar: F1 Interface, F2 Display, F5 Cheats, F8 Controllers, F9 Diagnostics and F11 Fullscreen.
+The v0.3.3 Remastered libultraship settings categories are Interface, Display, Controllers, Diagnostics, Cheats, Updates and Support. The v0.3.2 downloads retain their existing five categories. Shortcuts appear only in the top bar: F1 Interface, F2 Display, F5 Cheats, F8 Controllers, F9 Diagnostics and F11 Fullscreen.
 
 Display offers Standard, 720p, 1080p, 1440p 16:9, 1440p 21:9 (3440×1440) and 4K (3840×2160), plus VSync and presentation targets of 60/120/144/165/180/200/240 Hz. Fullscreen uses the desktop size. **Fill screen in fullscreen** defaults to On and stretches the complete game image across the display, including menus; turn it off and Apply and save to preserve the original proportions. Presentation targets do not change the monitor's Windows refresh rate.
 
@@ -42,6 +42,16 @@ Keyboard is enabled by default: Enter Start, Z A, X B, Space Z trigger, arrows s
 Controllers includes **Memory Pak / Rumble Pak** selection, applied on the next launch. Memory storage currently attaches to Port 1. Not all controllers support rumble; check the controller manufacturer's specifications. Physical rumble compatibility depends on the device and SDL support.
 
 **Enable cheat menu** works before pressing Start. **Enable all cheats**, directly below it, selects all 21 modifiers. Cheat controls save and apply automatically. Changes made in the native in-game cheat menu automatically update the launcher, including multi-value choices such as fog color and mass. Every unlocked option remains adjustable even when currently off. Individual choices remain available. Some modifiers hide the car/track or disable brakes/collisions. Master OFF restores normal modifiers but does not erase rewards already saved by the game.
+
+## Updates and Support in Remastered libultraship v0.3.3
+
+**Updates** provides Check for updates, optional saved startup checks, release notes, download progress and cancellation. Downloads are tied to the correct Windows/Remastered/libultraship experimental release and its published SHA-256. Installation requires approval and a stopped game, keeps the previous application folder, and reuses your player-data folder. **Roll back to previous version** verifies and restores the retained previous application offline. A damaged-game launch also offers recovery through a separately verified helper. Updates and rollback never restart the game automatically.
+
+The older v0.3.2 launcher has no Updates tab: install v0.3.3 into a new application folder while keeping the same player-data folder. Future compatible updates can use the new tab.
+
+**Support** offers [Discord](https://discord.gg/Z7P6WrDfBW) and an editable email draft to retroremakes26@gmail.com, with copy fallbacks. No messages, files or diagnostics are sent automatically.
+
+The maintainer explicitly authorized publication of this exact tested Remastered installer. It contains compiled ROM-derived game code and the reviewed remaster texture pack; it contains no ROM or player data. It is not a local code-generation installer. See [v0.3.3 verification and publication scope](V033-VERIFICATION.md).
 
 ## Unlisted controllers
 

@@ -14,9 +14,10 @@
 #include <cwctype>
 #include "../windows_native/rom_identity.hpp"
 #include "payload_table.hpp"
+#include "../windows_native/rush-release-metadata.hpp"
 
 namespace fs=std::filesystem;
-static constexpr wchar_t version[]=L"0.3.1";
+static bool setup_no_shortcut=false;
 static HINSTANCE instance;
 static fs::path rootPath,dataPath,romPath;
 static bool cli=false;
@@ -127,15 +128,10 @@ static void shortcut(const fs::path& app) {
     link->SetPath((app/L"Rush2049Original.exe").c_str());link->SetWorkingDirectory(app.c_str());link->SetDescription(payload::edition);
     link->SetIconLocation((app/L"Rush2049Original.exe").c_str(),0);
     IPersistFile* file=nullptr;if(SUCCEEDED(link->QueryInterface(IID_PPV_ARGS(&file)))){
-        const auto path=known(FOLDERID_Desktop)/(!payload::lus?(payload::remastered?L"Rush 2049 Remastered v0.3.2.lnk":L"Rush 2049 Original v0.3.2.lnk"):payload::remaster_only?L"Rush 2049 Remastered libultraship v0.3.2.lnk":payload::remastered?L"Rush 2049 Remastered v0.3.2.lnk":L"Rush 2049 Original libultraship v0.3.2.lnk");
-        if(!fs::exists(path))file->Save(path.c_str(),TRUE);
-        else if(SUCCEEDED(file->Load(path.c_str(),STGM_READWRITE))){
-            wchar_t existing[MAX_PATH]{};
-            if(SUCCEEDED(link->GetPath(existing,MAX_PATH,nullptr,SLGP_RAWPATH)) && fs::path(existing).filename()==L"Rush2049Original.exe"){
-                // Refresh our existing shortcut's icon while retaining its target and arguments.
-                link->SetIconLocation((app/L"Rush2049Original.exe").c_str(),0);file->Save(path.c_str(),TRUE);
-            }
-        }
+        const auto path=known(FOLDERID_Desktop)/(std::wstring(payload::edition)+L".lnk");
+        bool owned=true;
+        if(fs::exists(path)){owned=SUCCEEDED(file->Load(path.c_str(),STGM_READWRITE));wchar_t existing[32768]{};owned=owned&&SUCCEEDED(link->GetPath(existing,32768,nullptr,SLGP_RAWPATH))&&fs::path(existing).filename()==L"Rush2049Original.exe";}
+        if(owned){link->SetPath((app/L"Rush2049Original.exe").c_str());link->SetArguments(L"");link->SetWorkingDirectory(app.c_str());link->SetIconLocation((app/L"Rush2049Original.exe").c_str(),0);file->Save(path.c_str(),TRUE);}
         file->Release();
     }link->Release();
 }
@@ -208,6 +204,10 @@ static int launch(const fs::path& app,const fs::path& data,bool preflight) {
     for(const auto& name:remove)SetEnvironmentVariableW(name.c_str(),nullptr);
     if(visualEdition==1){SetEnvironmentVariableW(L"RUSH_REMASTER_TEXTURE_PACK",(app/L"remaster-pack").c_str());SetEnvironmentVariableW(L"RUSH_REMASTER_CIRCUIT_GLOW",L"1");}
     SetEnvironmentVariableW(L"RUSH_LUS_IMGUI",payload::lus?L"1":nullptr);
+    SetEnvironmentVariableW(L"RUSH_RELEASE_VERSION",rush::rom::wide(rush::release::version).c_str());
+    SetEnvironmentVariableW(L"RUSH_RELEASE_EDITION",visualEdition==1?L"remastered":L"original");
+    const auto updateRequest=data/(L"update-request-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L".json");
+    SetEnvironmentVariableW(L"RUSH_UPDATE_REQUEST",updateRequest.c_str());
     SetEnvironmentVariableW(L"RUSH_OPTIONS_CONFIG",(data/L"options.json").c_str());
     SetEnvironmentVariableW(L"RUSH_CONTROLLER_PAK",(data/L"controller.mpk").c_str());SetEnvironmentVariableW(L"RUSH_INPUT_CONFIG",(data/L"input.cfg").c_str());
     SECURITY_ATTRIBUTES security{sizeof(security),nullptr,TRUE};
@@ -221,9 +221,39 @@ static int launch(const fs::path& app,const fs::path& data,bool preflight) {
     CloseHandle(log);CloseHandle(input);
     if(!created)throw std::runtime_error("The game could not start. Reinstall this version and check Vulkan support.");
     WaitForSingleObject(child.hProcess,INFINITE);DWORD status=1;GetExitCodeProcess(child.hProcess,&status);CloseHandle(child.hThread);CloseHandle(child.hProcess);
+    if(status==0 && payload::lus && fs::exists(updateRequest)){
+        const auto agent=app/L"PortUpdateAgent.exe";
+        auto args=quote(agent.wstring())+L" "+quote(app.wstring())+L" "+quote(data.wstring())+L" "+quote(rush::rom::wide(rush::release::version))+L" "+quote(visualEdition==1?L"remastered":L"original")+L" "+quote(updateRequest.wstring())+L" "+std::to_wstring(GetCurrentProcessId());
+        STARTUPINFOW agentStart{sizeof(agentStart)};PROCESS_INFORMATION process{};
+        if(!CreateProcessW(agent.c_str(),args.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,app.c_str(),&agentStart,&process))throw std::runtime_error("Cannot open the update helper. Your previous application is retained.");
+        CloseHandle(process.hThread);CloseHandle(process.hProcess);
+    }
     if(status!=0 && !cli)MessageBoxW(nullptr,L"The game exited with an error. Your saves are retained. Details are in last-session.log in your player-data folder.",L"Rush 2049",MB_OK|MB_ICONWARNING);
     return static_cast<int>(status);
 }
+
+#ifndef RUSH_SETUP
+static void verify_recovery_helper(const fs::path& app,const fs::path& data){
+    if(!payload::lus||!fs::exists(data/L"update-history.dat"))throw std::runtime_error("No previous verified application is recorded");
+    safe(data);const auto helper=app/L"PortUpdateAgent.exe";safe(helper);
+    for(const auto& item:payload::files)if(fs::path(item.path)==L"PortUpdateAgent.exe"){
+        auto bytes=read(helper);if(rush::rom::hash(bytes.data(),bytes.size(),BCRYPT_SHA256_ALGORITHM)!=item.sha256)throw std::runtime_error("Rollback helper failed verification");return;
+    }throw std::runtime_error("This installation has no verified rollback helper");
+}
+static bool offer_recovery(const fs::path& app,const fs::path& data,const std::string& failure){
+    try{verify_recovery_helper(app,data);}catch(...){return false;}
+    auto message=rush::rom::wide(failure)+L"\n\nRestore the previous verified Rush application?\nYour player data stays in place and the game will not restart automatically.";
+    if(MessageBoxW(nullptr,message.c_str(),L"Rush 2049 — restore previous version?",MB_YESNO|MB_DEFBUTTON2|MB_ICONWARNING)==IDYES){
+        try{
+            auto request=data/(L"update-request-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L".json");
+            const std::string ticket=R"({"action":"rollback"})";write_new(request,reinterpret_cast<const uint8_t*>(ticket.data()),ticket.size());
+            auto agent=app/L"PortUpdateAgent.exe";auto args=quote(agent.wstring())+L" "+quote(app.wstring())+L" "+quote(data.wstring())+L" "+quote(rush::rom::wide(rush::release::version))+L" "+quote(visualEdition==1||payload::remaster_only?L"remastered":L"original")+L" "+quote(request.wstring())+L" "+std::to_wstring(GetCurrentProcessId());
+            STARTUPINFOW start{sizeof(start)};PROCESS_INFORMATION child{};
+            if(!CreateProcessW(agent.c_str(),args.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,app.c_str(),&start,&child))throw std::runtime_error("Cannot open the rollback helper; both application folders are retained");CloseHandle(child.hThread);CloseHandle(child.hProcess);
+        }catch(const std::exception& e){MessageBoxW(nullptr,rush::rom::wide(e.what()).c_str(),L"Rush rollback — action required",MB_OK|MB_ICONERROR);}
+    }return true;
+}
+#endif
 
 #ifdef RUSH_SETUP
 static HWND romEdit,directoryEdit,statusLabel,installButton,desktopCheck;
@@ -243,7 +273,7 @@ static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM wp,LPARAM lp
         control(window,L"BUTTON",L"Browse...",WS_TABSTOP,490,108,100,27,102);
         control(window,L"STATIC",L"New installation folder",0,24,149,565,20);
         directoryEdit=control(window,L"EDIT",rootPath.c_str(),ES_AUTOHSCROLL|WS_TABSTOP,24,173,566,27,103);
-        desktopCheck=control(window,L"BUTTON",L"Create a desktop shortcut",BS_AUTOCHECKBOX|WS_TABSTOP,24,217,330,25,104);SendMessageW(desktopCheck,BM_SETCHECK,BST_CHECKED,0);
+        desktopCheck=control(window,L"BUTTON",L"Create a desktop shortcut",BS_AUTOCHECKBOX|WS_TABSTOP,24,217,330,25,104);SendMessageW(desktopCheck,BM_SETCHECK,setup_no_shortcut?BST_UNCHECKED:BST_CHECKED,0);if(setup_no_shortcut)EnableWindow(desktopCheck,FALSE);
         statusLabel=control(window,L"STATIC",L"ROM required. No compiler tools or Python needed.",0,24,255,565,44,105);
         installButton=control(window,L"BUTTON",L"Install",BS_DEFPUSHBUTTON|WS_TABSTOP,378,308,100,30,106);EnableWindow(installButton,FALSE);
         control(window,L"BUTTON",L"Cancel",WS_TABSTOP,490,308,100,30,107);return 0;
@@ -260,15 +290,15 @@ static LRESULT CALLBACK window_proc(HWND window,UINT message,WPARAM wp,LPARAM lp
 
 int WINAPI wWinMain(HINSTANCE app,HINSTANCE,LPWSTR,int show) {
     instance=app;CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
-    int argc=0;LPWSTR* argv=CommandLineToArgvW(GetCommandLineW(),&argc);bool preflight=false,installMode=false,noShortcut=false;
+    int argc=0;LPWSTR* argv=CommandLineToArgvW(GetCommandLineW(),&argc);bool preflight=false,verifyApplication=false,verifyRecovery=false,installMode=false,noShortcut=false;
     try {
         dataPath=known(FOLDERID_LocalAppData)/L"Rush2049Original/PlayerData";rootPath=self().parent_path();
 #ifdef RUSH_SETUP
-        rootPath=known(FOLDERID_LocalAppData)/(!payload::lus?(payload::remastered?L"Rush2049Original/App-Remastered-Native-v0.3.2":L"Rush2049Original/App-Original-Native-v0.3.2"):payload::remaster_only?L"Rush2049Original/App-Remaster-LUS-v0.3.2":payload::remastered?L"Rush2049Original/App-Remastered-v0.3.2":L"Rush2049Original/App-v0.3.2");
+        rootPath=known(FOLDERID_LocalAppData)/L"Rush2049Original"/(L"App-"+std::wstring(payload::remastered?L"Remastered":L"Original")+(payload::lus?L"-LUS-v":L"-Native-v")+rush::rom::wide(rush::release::version));
 #endif
         bool explicitData=false;
-        for(int i=1;i<argc;++i){std::wstring a=argv[i];if(a==L"--edition" && i+1<argc){std::wstring edition=argv[++i]; if(edition==L"original")visualEdition=0;else if(edition==L"remaster")visualEdition=1;else throw std::runtime_error("Choose original or remaster.");}else if(a==L"--install"){installMode=true;cli=true;}else if(a==L"--preflight"){preflight=true;cli=true;}else if(a==L"--no-shortcut")noShortcut=true;else if((a==L"--rom"||a==L"--directory"||a==L"--data-dir") && i+1<argc){const fs::path value=fs::absolute(argv[++i]).lexically_normal();if(a==L"--rom")romPath=value;else if(a==L"--directory")rootPath=value;else {dataPath=value;explicitData=true;}}else throw std::runtime_error("Unknown launch option.");}
-        LocalFree(argv);argv=nullptr;
+        for(int i=1;i<argc;++i){std::wstring a=argv[i];if(a==L"--edition" && i+1<argc){std::wstring edition=argv[++i]; if(edition==L"original")visualEdition=0;else if(edition==L"remaster")visualEdition=1;else throw std::runtime_error("Choose original or remaster.");}else if(a==L"--install"){installMode=true;cli=true;}else if(a==L"--preflight"){preflight=true;cli=true;}else if(a==L"--verify-application"){verifyApplication=true;cli=true;}else if(a==L"--verify-rollback-helper"){verifyRecovery=true;cli=true;}else if(a==L"--no-shortcut")noShortcut=true;else if((a==L"--rom"||a==L"--directory"||a==L"--data-dir") && i+1<argc){const fs::path value=fs::absolute(argv[++i]).lexically_normal();if(a==L"--rom")romPath=value;else if(a==L"--directory")rootPath=value;else {dataPath=value;explicitData=true;}}else throw std::runtime_error("Unknown launch option.");}
+        LocalFree(argv);argv=nullptr;setup_no_shortcut=noShortcut;
 #ifdef RUSH_SETUP
         if(installMode){if(romPath.empty())throw std::runtime_error("A supported original US ROM is required BEFORE installation.");install_app(rootPath,romPath,dataPath,!noShortcut);CoUninitialize();return 0;}
         WNDCLASSW klass{};klass.hInstance=instance;klass.lpfnWndProc=window_proc;klass.lpszClassName=L"Rush2049OriginalInstaller";klass.hCursor=LoadCursorW(nullptr,IDC_ARROW);klass.hIcon=LoadIconW(instance,MAKEINTRESOURCEW(1));klass.hbrBackground=reinterpret_cast<HBRUSH>(COLOR_WINDOW+1);RegisterClassW(&klass);
@@ -276,6 +306,8 @@ int WINAPI wWinMain(HINSTANCE app,HINSTANCE,LPWSTR,int show) {
         if(!window)throw std::runtime_error("Cannot open the installer window.");ShowWindow(window,show);MSG message{};while(GetMessageW(&message,nullptr,0,0)>0){if(!IsDialogMessageW(window,&message)){TranslateMessage(&message);DispatchMessageW(&message);}}CoUninitialize();return 0;
 #else
         if(!explicitData){const auto raw=read(rootPath/L"player-data-location.txt",32768);dataPath=fs::path(rush::rom::wide(std::string(raw.begin(),raw.end())));}
+        if(verifyApplication){verify_payload(rootPath);CoUninitialize();return 0;}
+        if(verifyRecovery){verify_recovery_helper(rootPath,dataPath);CoUninitialize();return 0;}
         const auto result=launch(rootPath,dataPath,preflight);CoUninitialize();return result;
 #endif
     } catch(const std::exception& error) {

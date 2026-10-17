@@ -6,6 +6,7 @@
 #include "imgui/imgui.h"
 #include "cheat_native_state.hpp"
 #include "lus-controller-ui.hpp"
+#include "lus-updates-ui.hpp"
 namespace rush::options {
 inline rush::cheats::Preferences cheat_draft;
 inline std::unique_ptr<RT64::Inspector> overlay;
@@ -54,8 +55,8 @@ inline void draw(RenderCommandList* commands,RenderFramebuffer*){
     bool open=true;
     if(ImGui::Begin("Rush settings",&open)) {
         if(ImGui::BeginTabBar("Rush categories")){
-            const char* names[]={"Interface","Display","Controllers","Diagnostics","Cheats"};
-            for(int i=0;i<5;++i){
+            const char* names[]={"Interface","Display","Controllers","Diagnostics","Cheats","Updates","Support"};
+            for(int i=0;i<7;++i){
                 auto flags=requested_page==i?ImGuiTabItemFlags_SetSelected:ImGuiTabItemFlags_None;
                 if(ImGui::BeginTabItem(names[i],nullptr,flags)){page=i;ImGui::EndTabItem();}
             }
@@ -92,6 +93,8 @@ inline void draw(RenderCommandList* commands,RenderFramebuffer*){
             ImGui::TextWrapped("Window resolution applies in windowed mode. Fullscreen uses the desktop size. Window scale adjusts RT64 rendering to the game window.");
         }
         if(page==2)controller_page(*store);
+        if(page==5)updates_page(*store);
+        if(page==6)support_page();
         if(page==3){ImGui::Checkbox("Show frame timing",&store->diagnostics);ImGui::Text("UI frame rate: %.1f fps",ImGui::GetIO().Framerate);ImGui::TextWrapped("Dear ImGui uses RT64's presentation hook. libultraship provides the options configuration component. Game runtime, audio and input retain their existing backends.");}
         if(page==4 && cheat_preferences){
             cheat_draft=cheat_preferences->preferences();
@@ -111,7 +114,7 @@ inline void draw(RenderCommandList* commands,RenderFramebuffer*){
         ImGui::EndChild();
         ImGui::Separator();
         if(ImGui::Button("Apply and save")){
-            try{if(page==2){store->save();save_controller_draft();}else if(page==4 && cheat_preferences){/* Cheat controls save immediately. */}else{store->save();resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);fullscreen_fill_request.store(store->fill_fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);}error.clear();std::puts("LUS_OPTIONS_SAVED");}
+            try{if(page>=5){store->save();}else if(page==2){store->save();save_controller_draft();}else if(page==4 && cheat_preferences){/* Cheat controls save immediately. */}else{store->save();resolution_request.store(store->resolution);fullscreen_request.store(store->fullscreen?1:0);fullscreen_fill_request.store(store->fill_fullscreen?1:0);window_size_request.store(store->window_size);auto size=store->window_dimensions();window_extent_request.store(pack_extent(size[0],size[1]));refresh_request.store(store->refresh);vsync_request.store(store->vsync?1:0);}error.clear();std::puts("LUS_OPTIONS_SAVED");}
             catch(const std::exception& e){error=e.what();}
         }
         ImGui::SameLine();if(ImGui::Button("Close"))visible.store(false);
@@ -120,16 +123,27 @@ inline void draw(RenderCommandList* commands,RenderFramebuffer*){
     ImGui::End();if(!open)visible.store(false);
     }
     if(store->diagnostics){ImGui::SetNextWindowBgAlpha(0.65f);if(ImGui::Begin("Frame timing")){ImGui::Text("%.2f ms (UI presentation)",1000.0f/ImGui::GetIO().Framerate);}ImGui::End();}
+    static bool update_notice=true;
+    auto update=updater->snapshot();
+    if(store->update_auto_check && update_notice && !update.release.tag.empty() && !visible.load()){
+        ImGui::SetNextWindowSize(ImVec2(std::min(400.0f,ImGui::GetIO().DisplaySize.x-20.0f),0),ImGuiCond_Always);
+        if(ImGui::Begin("Rush update available",&update_notice,ImGuiWindowFlags_AlwaysAutoResize)){
+            ImGui::Text("Version %s is available.",update.release.tag.c_str());
+            if(ImGui::Button("Review update")){page_request.store(5);visible.store(true);update_notice=false;}
+        }ImGui::End();
+    }
     overlay->endFrame();overlay->draw(commands);
     static bool logged=false;
     if(!logged){auto* data=ImGui::GetDrawData();std::printf("LUS_IMGUI_DRAW: vertices=%d lists=%d\n",data->TotalVtxCount,data->CmdListsCount);logged=true;}
 }
-inline void deinit(){available.store(false);visible.store(false);if(app && listener.previous)app->appWindow->listener=listener.previous;listener.previous=nullptr;overlay.reset();store.reset();app=nullptr;drain();RT64::SetRenderHooks(nullptr,nullptr,nullptr);}
+inline void deinit(){available.store(false);visible.store(false);updater.reset();if(app && listener.previous)app->appWindow->listener=listener.previous;listener.previous=nullptr;overlay.reset();store.reset();app=nullptr;drain();RT64::SetRenderHooks(nullptr,nullptr,nullptr);}
 inline void init(RT64::Application* application){
     if(!std::getenv("RUSH_LUS_IMGUI"))return;
     if(!window || application->userConfig.developerMode || RT64::GetRenderHookDraw() || RT64::GetRenderHookInit() || RT64::GetRenderHookDeinit())throw std::runtime_error("Options cannot replace existing renderer hooks");
     const char* file=std::getenv("RUSH_OPTIONS_CONFIG");
     store=std::make_unique<Store>(file?std::filesystem::u8path(file):std::filesystem::path{});
+    updater=std::make_unique<rush::updates::Service>();
+    if(store->update_auto_check)updater->check();
     if(cheat_preferences)cheat_draft=cheat_preferences->preferences();
     app=application;
     overlay=std::make_unique<RT64::Inspector>(app->device.get(),app->swapChain.get(),app->chosenGraphicsAPI,window);

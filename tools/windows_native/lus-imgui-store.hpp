@@ -16,6 +16,7 @@ public:
     std::array<int,4> pak_modes{};
     bool fullscreen=false, diagnostics=false;
     bool fill_fullscreen=true;
+    bool update_auto_check=false;
     explicit Store(const std::filesystem::path& file):path(file){
         if(path.empty())return;
         if(!path.is_absolute())throw std::runtime_error("Options path must be absolute");
@@ -35,6 +36,7 @@ public:
             }
             if(value.contains("fullscreen"))fullscreen=value.at("fullscreen").get<bool>();
             if(value.contains("fillFullscreen"))fill_fullscreen=value.at("fillFullscreen").get<bool>();
+            if(value.contains("updateAutoCheck"))update_auto_check=value.at("updateAutoCheck").get<bool>();
             if(value.contains("windowWidth"))window_width=value.at("windowWidth").get<int>();
             if(value.contains("windowHeight"))window_height=value.at("windowHeight").get<int>();
             if(value.contains("diagnostics"))diagnostics=value.at("diagnostics").get<bool>();
@@ -51,7 +53,7 @@ public:
         if(window_size==6)return {window_width,window_height};
         return {sizes[window_size][0],sizes[window_size][1]};
     }
-    void sync(){check();config.SetInt("schema",5);for(int port=0;port<4;++port)config.SetInt("controllerPaks."+std::to_string(port),pak_modes[port]);config.SetInt("refreshRate",refresh);config.SetBool("vsync",vsync);config.SetFloat("uiScale",scale);config.SetInt("resolution",resolution);config.SetInt("windowSize",window_size);config.SetInt("windowWidth",window_width);config.SetInt("windowHeight",window_height);config.SetBool("fullscreen",fullscreen);config.SetBool("fillFullscreen",fill_fullscreen);config.SetBool("diagnostics",diagnostics);}
+    void sync(){check();config.SetBool("updateAutoCheck",update_auto_check);config.SetInt("schema",5);for(int port=0;port<4;++port)config.SetInt("controllerPaks."+std::to_string(port),pak_modes[port]);config.SetInt("refreshRate",refresh);config.SetBool("vsync",vsync);config.SetFloat("uiScale",scale);config.SetInt("resolution",resolution);config.SetInt("windowSize",window_size);config.SetInt("windowWidth",window_width);config.SetInt("windowHeight",window_height);config.SetBool("fullscreen",fullscreen);config.SetBool("fillFullscreen",fill_fullscreen);config.SetBool("diagnostics",diagnostics);}
     void save(){
         sync();if(path.empty())return;
         if(!std::filesystem::is_directory(path.parent_path()))throw std::runtime_error("Options folder must already exist");

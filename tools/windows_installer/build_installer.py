@@ -5,7 +5,7 @@ No ROM, generated game source or expanded game-data image is packaged.
 The optional remastered edition bundles the reviewed restoration texture pack.
 """
 from pathlib import Path
-import argparse, hashlib, json, os, shutil, subprocess, zipfile
+import argparse, hashlib, json, os, shutil, subprocess, zipfile, re
 
 ROOT=Path(__file__).resolve().parents[2]
 HERE=Path(__file__).resolve().parent
@@ -43,7 +43,9 @@ def main():
     parser.add_argument('--icon',required=True,type=Path,help='Maintainer-supplied multi-size Windows ICO; kept outside source Git')
     parser.add_argument('--native-menus',action='store_true',help='Package the existing native-menu game without libultraship')
     parser.add_argument('--remaster-only',action='store_true',help='Launch the remaster directly without the visual-edition chooser')
+    parser.add_argument("--version",default="0.3.3",help="Approved packaged release version; also supports private integration fixtures")
     args=parser.parse_args()
+    if not re.fullmatch(r"[0-9]{1,5}\.[0-9]{1,5}\.[0-9]{1,5}",args.version):raise ValueError("Expected a numeric three-part release version")
     native=args.native_root.resolve();output=args.output.resolve()
     if args.remaster_only and not args.remaster_pack:raise ValueError('--remaster-only requires --remaster-pack')
     if not args.icon.is_file() or args.icon.read_bytes()[:4] != b'\x00\x00\x01\x00': raise ValueError('Valid Windows ICO required')
@@ -54,6 +56,8 @@ def main():
     output.mkdir(parents=True);payload=output/'payload';payload.mkdir()
     for name in ('RushWindowsRT64.exe','SDL2.dll','dxcompiler.dll','dxil.dll'):
         shutil.copyfile(native/'build/Release'/name,payload/name)
+    if not args.native_menus:
+        shutil.copyfile(native/'build/Release/PortUpdateAgent.exe',payload/'PortUpdateAgent.exe')
     from embed_icon import embed_icon
     embed_icon(payload/'RushWindowsRT64.exe',args.icon)
     shutil.copyfile(args.icon,payload/'Rush2049.ico')
@@ -85,18 +89,22 @@ def main():
             source=(pack/relative).resolve();assert source.is_relative_to(pack) and not (pack/relative).is_symlink()
             assert source.read_bytes().startswith(b'\x89PNG\r\n\x1a\n')
             target=destination/relative;target.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(source,target);hashes.add(digest);paths.add(str(relative))
-    shutil.copyfile(args.source_archive,payload/'Integration-Source-v0.3.2.zip')
+    shutil.copyfile(args.source_archive,payload/f'Integration-Source-v{args.version}.zip')
     shutil.copyfile(ROOT/'COPYING',payload/'COPYING')
     shutil.copyfile(ROOT/'README.md',payload/'README.md')
+    metadata={'schema':1,'port':'rush2049','platform':'windows-x64','channel':'experimental','runtime':'native' if args.native_menus else 'libultraship','edition':'remastered' if args.remaster_pack else 'original','version':args.version,'support':{'discord':'https://discord.gg/Z7P6WrDfBW','email':'retroremakes26@gmail.com'}}
+    (payload/'release.json').write_text(json.dumps(metadata,indent=2)+'\n')
     table=resources(output/'launcher-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only,args.native_menus)
-    command(['cmake','-S',HERE,'-B',output/'launcher-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_RESOURCE_DIR='+str(output/'launcher-resources')],output/'launcher-configure.log')
+    command(['cmake','-S',HERE,'-B',output/'launcher-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_RESOURCE_DIR='+str(output/'launcher-resources'),'-DRUSH_PACKAGE_VERSION='+args.version],output/'launcher-configure.log')
     command(['cmake','--build',output/'launcher-build','--config','Release','--parallel','2'],output/'launcher-build.log')
     shutil.copyfile(output/'launcher-build/Release/Rush2049Original.exe',payload/'Rush2049Original.exe')
     table=resources(output/'setup-resources',payload,bool(args.remaster_pack),args.icon,args.remaster_only,args.native_menus)
-    command(['cmake','-S',HERE,'-B',output/'setup-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_BUILD_SETUP=ON','-DRUSH_RESOURCE_DIR='+str(output/'setup-resources')],output/'setup-configure.log')
+    command(['cmake','-S',HERE,'-B',output/'setup-build','-G','Visual Studio 18 2026','-A','x64','-DRUSH_BUILD_SETUP=ON','-DRUSH_RESOURCE_DIR='+str(output/'setup-resources'),'-DRUSH_PACKAGE_VERSION='+args.version],output/'setup-configure.log')
     command(['cmake','--build',output/'setup-build','--config','Release','--parallel','2'],output/'setup-build.log')
-    installer=output/('Rush2049-Remastered-PC-v0.3.2-Setup.exe' if args.remaster_pack else 'Rush2049-Original-PC-v0.3.2-Setup.exe');shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
-    manifest={'version':'v0.3.2','edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
+    edition_name='Remastered' if args.remaster_pack else 'Original'
+    runtime_name='' if args.native_menus else '-Libultraship'
+    installer=output/f'Rush2049-{edition_name}{runtime_name}-PC-v{args.version}-Setup.exe';shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
+    manifest={'version':'v'+args.version,'edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
     (output/'package-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     (output/'SHA256SUMS.txt').write_text(manifest['installer_sha256']+'  '+installer.name+'\n')
     print(json.dumps({'installer':str(installer),'size':installer.stat().st_size,'sha256':manifest['installer_sha256'],'payload_files':len(table)}))

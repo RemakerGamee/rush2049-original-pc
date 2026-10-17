@@ -14,3 +14,7 @@ target_include_directories(${TARGET} PRIVATE "${RUSH_RESOURCE_DIR}")
 target_compile_options(${TARGET} PRIVATE /utf-8)
 target_link_libraries(${TARGET} PRIVATE bcrypt comdlg32 comctl32 shell32 ole32 uuid user32)
 target_link_options(${TARGET} PRIVATE "/MANIFEST:EMBED" "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/application.manifest")
+
+if(RUSH_PACKAGE_VERSION)
+  target_compile_definitions(${TARGET} PRIVATE RUSH_PACKAGED_VERSION="${RUSH_PACKAGE_VERSION}")
+endif()
