@@ -1,11 +1,12 @@
 #pragma once
 #include "rush-update-service.hpp"
+#include "native-support-ui.hpp"
 #include <commctrl.h>
 #include <memory>
 
 // An additive Win32 panel; no renderer, controller or existing menu ownership changes.
 namespace rush::native_updates {
-inline constexpr UINT menu_id=0x7e01;
+inline constexpr UINT menu_id=0x7e01,support_menu_id=0x7e02;
 inline constexpr UINT_PTR subclass_id=0x52555348;
 inline HWND panel=nullptr,owner=nullptr;
 inline HMENU menu=nullptr;
@@ -67,17 +68,18 @@ inline void open(){
     refresh();ShowWindow(panel,SW_SHOWNORMAL);SetForegroundWindow(panel);
 }
 inline LRESULT CALLBACK game_proc(HWND window,UINT msg,WPARAM wp,LPARAM lp,UINT_PTR,DWORD_PTR){
+    if(msg==WM_COMMAND&&LOWORD(wp)==support_menu_id){try{rush::native_support::open(window,rush::updates::environment("RUSH_RELEASE_VERSION",rush::release::version),rush::updates::environment("RUSH_RELEASE_EDITION","original")+" native");}catch(const std::exception& e){MessageBoxW(window,rush::rom::wide(e.what()).c_str(),L"Rush Support",MB_OK|MB_ICONERROR);}return 0;}
     if(msg==WM_COMMAND&&LOWORD(wp)==menu_id){try{open();}catch(const std::exception& e){MessageBoxW(window,rush::rom::wide(e.what()).c_str(),L"Rush Updates",MB_OK|MB_ICONERROR);}return 0;}
     return DefSubclassProc(window,msg,wp,lp);
 }
 inline void attach(HWND window){
     owner=window;menu=GetMenu(window);owns_menu=!menu;if(!menu)menu=CreateMenu();
-    if(!menu||!AppendMenuW(menu,MF_STRING,menu_id,L"Updates")||!SetWindowSubclass(window,game_proc,subclass_id,0))throw std::runtime_error("Cannot attach Updates menu");
+    if(!menu||!AppendMenuW(menu,MF_STRING,menu_id,L"Updates")||!AppendMenuW(menu,MF_STRING,support_menu_id,L"Support")||!SetWindowSubclass(window,game_proc,subclass_id,0))throw std::runtime_error("Cannot attach Updates menu");
     if(owns_menu)SetMenu(window,menu);DrawMenuBar(window);
 }
 inline void detach(){
-    if(panel)DestroyWindow(panel);panel=nullptr;updater.reset();
-    if(owner){RemoveWindowSubclass(owner,game_proc,subclass_id);if(menu)DeleteMenu(menu,menu_id,MF_BYCOMMAND);if(owns_menu)SetMenu(owner,nullptr);DrawMenuBar(owner);}
+    rush::native_support::detach();if(panel)DestroyWindow(panel);panel=nullptr;updater.reset();
+    if(owner){RemoveWindowSubclass(owner,game_proc,subclass_id);if(menu){DeleteMenu(menu,menu_id,MF_BYCOMMAND);DeleteMenu(menu,support_menu_id,MF_BYCOMMAND);}if(owns_menu)SetMenu(owner,nullptr);DrawMenuBar(owner);}
     if(owns_menu&&menu)DestroyMenu(menu);menu=nullptr;owner=nullptr;owns_menu=false;
 }
 }

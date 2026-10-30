@@ -23,7 +23,7 @@ incomplete download refusal; installer cancellation; wrong edition/interface;
 failed new-app preflight; protected receipt corruption; retained-file tampering;
 shortcut activation failure; offline recovery with a broken current game and missing current metadata;
 byte-identical saves, controller/display/options files, ROM pointer and retained
-application folders; legacy v0.3.3 libultraship receipts; native menu preservation.
+application folders; legacy v0.3.3 libultraship receipts; native menu preservation; native Support contacts, email-draft identity and copy fallbacks without opening external apps during tests.
 Enable `-DRUSH_TEST_LIVE_UPDATES=ON` for metadata checks of all four public
 streams and one representative native installer download. It checks SHA-256,
 tampering, in-transfer cancellation and response bounds entirely in memory;
