@@ -42,11 +42,11 @@ static std::map<fs::path,std::string> player_hashes(const fs::path& data){std::m
     auto relative=f.path().lexically_relative(data);if(relative.begin()->wstring()==L"update-cache"){if(f.is_symlink())throw std::runtime_error("Linked update cache is unsupported");continue;}
     if(f.is_symlink())throw std::runtime_error("Linked player files are unsupported");if(!f.is_regular_file())continue;
     // Setup may deliberately repair the user's moved ROM pointer; it still verifies ROM identity.
-    auto name=relative.filename().wstring();if(name==L"session.lock"||name==L"rom-location.txt"||name==L"update-history.json"||name==L"update-history.dat"||name.starts_with(L"update-request-"))continue;
+    auto name=relative.filename().wstring();if(name==L"session.lock"||name==L"rom-location.txt"||name==L"update-history.json"||name==L"update-history.dat"||name.starts_with(L"update-history-")||name.starts_with(L"update-request-"))continue;
     auto bytes=read(f.path(),512ull*1024*1024);result[relative]=rush::rom::hash(bytes.data(),bytes.size(),BCRYPT_SHA256_ALGORITHM);
 }return result;}
 
-struct Context {fs::path app,data;std::string installed,edition;};
+struct Context {fs::path app,data;std::string installed,edition;std::string runtime="libultraship";};
 using Installer=std::function<DWORD(const fs::path&,const fs::path&,const fs::path&,const fs::path&)>;
 using Shortcut=std::function<void(const fs::path&,const std::string&)>;
 static std::string text_path(const fs::path& p){return rush::rom::utf8(p.wstring());}
@@ -59,6 +59,10 @@ static Json catalog(const fs::path& app,const std::string& installed){
     if(!files.contains("Rush2049Original.exe")||!files.contains("RushWindowsRT64.exe"))throw std::runtime_error("Previous application is incomplete");
     return {{"path",text_path(app)},{"version",installed},{"files",files}};
 }
+static void verify_identity(const fs::path& app,const Context& c,const std::string& installed){
+    auto raw=read(app/L"release.json",32768);auto m=Json::parse(raw.begin(),raw.end());rush::updates::identity(c.edition,c.runtime);
+    if(m.at("schema")!=1||m.at("port")!="rush2049"||m.at("platform")!="windows-x64"||m.at("channel")!="experimental"||m.at("edition")!=c.edition||m.at("runtime")!=c.runtime||rush::updates::version(m.at("version").get<std::string>())!=rush::updates::version(installed))throw std::runtime_error("Application edition, settings runtime or version does not match; activation refused");
+}
 static fs::path verify_catalog(const Json& record,const Context& c){
     auto app=fs::u8path(record.at("path").get<std::string>()).lexically_normal();safe(app);
     if(app.parent_path()!=c.app.parent_path().lexically_normal())throw std::runtime_error("Rollback application is outside the installation area");
@@ -67,13 +71,13 @@ static fs::path verify_catalog(const Json& record,const Context& c){
     for(auto it=files.begin();it!=files.end();++it){auto relative=fs::u8path(it.key());if(relative.is_absolute()||relative.has_root_name()||it.key().find(':')!=std::string::npos)throw std::runtime_error("Unsafe rollback file path");for(auto& part:relative)if(part==".."||part==".")throw std::runtime_error("Unsafe rollback file path");
         auto path=app/relative;safe(path);auto bytes=read(path,512ull*1024*1024);if(!rush::updates::sha256(it.value().get<std::string>())||rush::rom::hash(bytes.data(),bytes.size(),BCRYPT_SHA256_ALGORITHM)!=it.value().get<std::string>())throw std::runtime_error("The retained application has changed; rollback refused");}
     auto pointer=read(app/L"player-data-location.txt",32768);if(fs::u8path(std::string(pointer.begin(),pointer.end())).lexically_normal()!=c.data.lexically_normal())throw std::runtime_error("Rollback uses a different player-data folder");
-    return app;
+    verify_identity(app,c,record.at("version").get<std::string>());return app;
 }
 static void preflight_files(const fs::path& app){if(run(app/L"Rush2049Original.exe",L"--verify-application")!=0)throw std::runtime_error("Application files failed verification; previous application retained");}
 static void preflight(const fs::path& app,const std::string& edition){if(run(app/L"Rush2049Original.exe",L"--preflight --edition "+std::wstring(edition=="original"?L"original":L"remaster"))!=0)throw std::runtime_error("Application verification failed. The previous application is retained");}
 static fs::path desktop_folder(){PWSTR value=nullptr;if(FAILED(SHGetKnownFolderPath(FOLDERID_Desktop,0,nullptr,&value)))throw std::runtime_error("Cannot locate Desktop");fs::path result(value);CoTaskMemFree(value);return result;}
-static void shortcut_at(const fs::path& app,const std::string& edition,const fs::path& folder){
-    auto target=folder/fs::u8path("Rush 2049 "+std::string(edition=="original"?"Original":"Remastered")+" libultraship.lnk");
+static void shortcut_at(const fs::path& app,const std::string& edition,const fs::path& folder,const std::string& runtime="libultraship"){
+    auto target=folder/fs::u8path(rush::updates::shortcut_name(edition,runtime));
     IShellLinkW* link=nullptr;if(FAILED(CoCreateInstance(CLSID_ShellLink,nullptr,CLSCTX_INPROC_SERVER,IID_PPV_ARGS(&link))))throw std::runtime_error("Cannot create the game shortcut");
     IPersistFile* file=nullptr;HRESULT status=link->QueryInterface(IID_PPV_ARGS(&file));
     if(SUCCEEDED(status)){
@@ -86,26 +90,26 @@ static void shortcut_at(const fs::path& app,const std::string& edition,const fs:
 }
 static void preserve(const std::map<fs::path,std::string>& before,const fs::path& data){auto after=player_hashes(data);for(auto& [path,hash]:before)if(!after.contains(path)||after.at(path)!=hash)throw std::runtime_error("Player-data preservation check failed; the previous application is retained");}
 static void activate_with_history(const fs::path& data,const Json& history,const fs::path& app,const std::string& edition,const Shortcut& shortcut){
-    const bool existed=fs::exists(data/L"update-history.dat");Json old;if(existed)old=rush::updates::history_load(data);
+    const auto runtime=history.value("runtime",std::string("libultraship"));const auto receipt=rush::updates::history_path(data,edition,runtime);
+    const bool existed=fs::exists(receipt);Json old;if(existed)old=rush::updates::history_load(data,edition,runtime);
     rush::updates::history_save(data,history);
-    try{shortcut(app,edition);}catch(...){if(existed)rush::updates::history_save(data,old);else if(!DeleteFileW((data/L"update-history.dat").c_str()))throw std::runtime_error("Shortcut activation and rollback-history recovery failed; previous application retained");throw;}
+    try{shortcut(app,edition);}catch(...){if(existed)rush::updates::history_save(data,old);else if(!DeleteFileW(receipt.c_str()))throw std::runtime_error("Shortcut activation and rollback-history recovery failed; previous application retained");throw;}
 }
 static fs::path install_verified(const Context& c,const rush::updates::Release& release,const fs::path& cache,const Installer& installer,const Shortcut& shortcut){
-    safe(c.app);safe(c.data);safe(cache);rush::updates::version(c.installed);rush::updates::version(release.tag);rush::updates::asset_name(c.edition,release.tag);
+    safe(c.app);safe(c.data);safe(cache);rush::updates::version(c.installed);rush::updates::version(release.tag);rush::updates::asset_name(c.edition,release.tag,c.runtime);verify_identity(c.app,c,c.installed);
     Lock artifact(CreateFileW(cache.c_str(),GENERIC_READ,FILE_SHARE_READ,nullptr,OPEN_EXISTING,FILE_ATTRIBUTE_NORMAL,nullptr));if(artifact.handle==INVALID_HANDLE_VALUE)throw std::runtime_error("Cannot lock the installer for verification");
     rush::updates::verify(release,read(cache,release.bytes));publisher_signature(cache);preflight_files(c.app);
     auto old=catalog(c.app,c.installed);auto before=player_hashes(c.data);
-    auto destination=c.app.parent_path()/fs::u8path("Rush2049-"+c.edition+"-LUS-"+release.tag+"-"+std::to_string(GetTickCount64()));safe(destination);if(fs::exists(destination))throw std::runtime_error("Update destination already exists");
+    auto destination=c.app.parent_path()/fs::u8path("Rush2049-"+c.edition+(c.runtime=="libultraship"?"-LUS-":"-Native-")+release.tag+"-"+std::to_string(GetTickCount64()));safe(destination);if(fs::exists(destination))throw std::runtime_error("Update destination already exists");
     auto raw=read(c.data/L"rom-location.txt",32768);auto rom=fs::path(rush::rom::wide(std::string(raw.begin(),raw.end())));
     if(installer(cache,destination,rom,c.data)!=0||!fs::exists(destination/L"Rush2049Original.exe"))throw std::runtime_error("Installation cancelled or incomplete; the previous application is retained");
-    auto metadataRaw=read(destination/L"release.json",32768);auto metadata=Json::parse(metadataRaw.begin(),metadataRaw.end());
-    if(metadata.at("schema")!=1||metadata.at("port")!="rush2049"||metadata.at("platform")!="windows-x64"||metadata.at("runtime")!="libultraship"||metadata.at("channel")!="experimental"||metadata.at("edition")!=c.edition||rush::updates::version(metadata.at("version").get<std::string>())!=rush::updates::version(release.tag))throw std::runtime_error("Installed release identity does not match the selected update; previous application retained");
+    verify_identity(destination,c,release.tag);
     preflight(destination,c.edition);preserve(before,c.data);verify_catalog(old,c);
     auto current=catalog(destination,release.tag);
-    activate_with_history(c.data,{{"schema",1},{"edition",c.edition},{"current",current},{"previous",old}},destination,c.edition,shortcut);return destination;
+    activate_with_history(c.data,{{"schema",1},{"edition",c.edition},{"runtime",c.runtime},{"current",current},{"previous",old}},destination,c.edition,shortcut);return destination;
 }
 static fs::path rollback_verified(const Context& c,const Shortcut& shortcut){
-    safe(c.app);safe(c.data);auto history=rush::updates::history_load(c.data);
+    safe(c.app);safe(c.data);auto history=rush::updates::history_load(c.data,c.edition,c.runtime);
     if(history.at("edition")!=c.edition||fs::u8path(history.at("current").at("path").get<std::string>()).lexically_normal()!=c.app.lexically_normal()||rush::updates::version(history.at("current").at("version").get<std::string>())!=rush::updates::version(c.installed))throw std::runtime_error("Rollback does not match this installed edition/version");
     auto before=player_hashes(c.data);auto previous=verify_catalog(history.at("previous"),c);if(previous==c.app)throw std::runtime_error("Rollback target is the current application");
     preflight_files(previous);preserve(before,c.data);
@@ -115,13 +119,14 @@ static fs::path rollback_verified(const Context& c,const Shortcut& shortcut){
 int WINAPI wWinMain(HINSTANCE,HINSTANCE,LPWSTR,int){
     CoInitializeEx(nullptr,COINIT_APARTMENTTHREADED);
     try{
-        int count=0;auto args=CommandLineToArgvW(GetCommandLineW(),&count);if(count!=7){if(args)LocalFree(args);throw std::runtime_error("Start updates from Rush's Updates tab");}
-        Context c{args[1],args[2],rush::rom::utf8(args[3]),rush::rom::utf8(args[4])};fs::path request=args[5];DWORD parent=std::stoul(args[6]);LocalFree(args);
+        int count=0;auto args=CommandLineToArgvW(GetCommandLineW(),&count);if(count!=7&&count!=8){if(args)LocalFree(args);throw std::runtime_error("Start updates from Rush's Updates tab");}
+        Context c{args[1],args[2],rush::rom::utf8(args[3]),rush::rom::utf8(args[4])};fs::path request=args[5];DWORD parent=std::stoul(args[6]);if(count==8)c.runtime=rush::rom::utf8(args[7]);LocalFree(args);
+        verify_identity(c.app,c,c.installed);
         safe(c.app);safe(c.data);safe(request);if(request.parent_path()!=c.data||!request.filename().wstring().starts_with(L"update-request-"))throw std::runtime_error("Invalid update request");
         Lock launcher(OpenProcess(SYNCHRONIZE,FALSE,parent));if(launcher.handle&&WaitForSingleObject(launcher.handle,120000)!=WAIT_OBJECT_0)throw std::runtime_error("The launcher is still running; installation cancelled");
         Session session(c.data);const auto raw=read(request,4096);auto j=Json::parse(raw.begin(),raw.end());fs::remove(request);
         auto action=j.value("action",std::string("install"));if(action!="install"&&action!="rollback")throw std::runtime_error("Unsupported update action");
-        auto shortcut=[](const fs::path& app,const std::string& edition){shortcut_at(app,edition,desktop_folder());};
+        auto shortcut=[&](const fs::path& app,const std::string& edition){shortcut_at(app,edition,desktop_folder(),c.runtime);};
         fs::path destination;
         if(action=="rollback"){
             if(MessageBoxW(nullptr,L"Restore the previous verified application? Your saves and preferences stay in place. The game will not restart automatically.",L"Rush 2049 rollback",MB_OKCANCEL|MB_ICONQUESTION)!=IDOK)return 0;
@@ -130,7 +135,7 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,LPWSTR,int){
             auto target=j.at("tag").get<std::string>();rush::updates::version(target);
             auto message=L"Install Rush 2049 "+rush::rom::wide(c.edition)+L" "+rush::rom::wide(target)+L"?\n\nThe previous application is retained. Your ROM and player data stay in place. Rush will not restart automatically.";
             if(MessageBoxW(nullptr,message.c_str(),L"Rush 2049 update",MB_OKCANCEL|MB_ICONQUESTION)!=IDOK)return 0;
-            std::atomic_bool cancel=false;auto release=rush::updates::select(rush::updates::online(c.edition,cancel),c.installed,target);
+            std::atomic_bool cancel=false;auto release=rush::updates::select(rush::updates::online(c.edition,cancel,c.runtime),c.installed,target);
             safe(c.data/L"update-cache");fs::create_directories(c.data/L"update-cache");auto cache=c.data/L"update-cache"/fs::u8path(release.hash+".exe");safe(cache);
             if(!fs::exists(cache)){auto bytes=rush::updates::fetch(release.url,release.bytes,cancel);rush::updates::verify(release,bytes);std::ofstream out(cache,std::ios::binary);if(!out.write(reinterpret_cast<const char*>(bytes.data()),bytes.size()))throw std::runtime_error("Cannot save verified installer");}
             destination=install_verified(c,release,cache,[](const fs::path& exe,const fs::path& app,const fs::path& rom,const fs::path& data){return run(exe,L"--directory "+quote(app.wstring())+L" --data-dir "+quote(data.wstring())+L" --rom "+quote(rom.wstring())+L" --no-shortcut");},shortcut);

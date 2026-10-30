@@ -22,13 +22,22 @@ inline std::array<unsigned,3> version(std::string s){
     if(p!=s.size())throw std::runtime_error("Unsupported release version");return result;
 }
 inline bool sha256(const std::string& s){return s.size()==64&&s.find_first_not_of("0123456789abcdef")==std::string::npos;}
-inline std::string asset_name(const std::string& edition,const std::string& tag){
-    version(tag);
+inline void identity(const std::string& edition,const std::string& runtime){
     if(edition!="original"&&edition!="remastered")throw std::runtime_error("Unsupported visual edition");
-    return "Rush2049-"+std::string(edition=="original"?"Original":"Remastered")+"-Libultraship-PC-"+tag+"-Setup.exe";
+    if(runtime!="native"&&runtime!="libultraship")throw std::runtime_error("Unsupported settings runtime");
+}
+inline std::string shortcut_name(const std::string& edition,const std::string& runtime="libultraship"){
+    identity(edition,runtime);
+    return "Rush 2049 "+std::string(edition=="original"?"Original":"Remastered")+(runtime=="libultraship"?" libultraship":"")+".lnk";
+}
+inline std::string asset_name(const std::string& edition,const std::string& tag,const std::string& runtime="libultraship"){
+    version(tag);
+    identity(edition,runtime);
+    return "Rush2049-"+std::string(edition=="original"?"Original":"Remastered")+(runtime=="libultraship"?"-Libultraship-PC-":"-PC-")+tag+"-Setup.exe";
 }
 struct Release{std::string tag,url,hash,notes;uint64_t bytes=0;};
-inline std::vector<Release> releases(const Json& document,const std::string& edition){
+inline std::vector<Release> releases(const Json& document,const std::string& edition,const std::string& runtime="libultraship"){
+    identity(edition,runtime);
     if(!document.is_array()||document.size()>100)throw std::runtime_error("Unsupported release response");
     std::vector<Release> result;
     for(const auto& row:document){
@@ -37,7 +46,7 @@ inline std::vector<Release> releases(const Json& document,const std::string& edi
         try{version(tag);}catch(...){continue;}
         // Experimental is the approved Rush channel. Never switch to another product or edition.
         if(!row.value("prerelease",false))continue;
-        const auto expected=asset_name(edition,tag);
+        const auto expected=asset_name(edition,tag,runtime);
         for(const auto& a:row.at("assets"))if(a.value("name","")==expected){
             const auto url=a.at("browser_download_url").get<std::string>();
             const auto origin="https://github.com/"+std::string(repository)+"/releases/download/"+tag+"/"+expected;

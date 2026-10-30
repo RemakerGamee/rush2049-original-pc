@@ -1,0 +1,22 @@
+name: Update and recovery checks
+on:
+  pull_request:
+    paths: ['tools/windows_native/**', 'tools/windows_installer/**', 'tools/windows_update_tests/**', '.github/workflows/update-recovery-checks.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  transactions:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/checkout@v4
+        with:
+          repository: nlohmann/json
+          ref: v3.11.3
+          path: .test-deps/json
+      - name: Configure standalone tests (no ROM or generated game code)
+        run: cmake -S tools/windows_update_tests -B update-checks -A x64 -DRUSH_JSON_INCLUDE_DIR="${{ github.workspace }}/.test-deps/json/single_include"
+      - run: cmake --build update-checks --config Release --parallel 2
+      - run: ctest --test-dir update-checks -C Release --output-on-failure
+      - run: python -m unittest discover -s tools/windows_installer -p test_update_packaging.py -v

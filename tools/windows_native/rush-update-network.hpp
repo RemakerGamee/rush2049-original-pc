@@ -35,6 +35,6 @@ inline std::vector<uint8_t> fetch(std::string url,uint64_t limit,std::atomic_boo
     }
     throw std::runtime_error("Too many download redirects");
 }
-inline std::vector<Release> online(const std::string& edition,std::atomic_bool& cancel){const auto data=fetch(api,4*1024*1024,cancel);return releases(Json::parse(data.begin(),data.end()),edition);}
+inline std::vector<Release> online(const std::string& edition,std::atomic_bool& cancel,const std::string& runtime="libultraship"){const auto data=fetch(api,4*1024*1024,cancel);return releases(Json::parse(data.begin(),data.end()),edition,runtime);}
 inline void verify(const Release& release,const std::vector<uint8_t>& bytes){if(bytes.size()!=release.bytes||rush::rom::hash(bytes.data(),bytes.size(),BCRYPT_SHA256_ALGORITHM)!=release.hash)throw std::runtime_error("Update checksum mismatch or incomplete download; installation refused");}
 }
