@@ -44,7 +44,7 @@ int wmain(int argc,wchar_t** argv){try{
         file(old/L"COPYING","changed old application");refuses([&]{rollback_verified(upgraded,activate);});file(old/L"COPYING","test fixture notice");
         refuses([&]{rollback_verified(upgraded,[](auto&,auto&){throw std::runtime_error("Injected shortcut error");});});expect(history_load(data,edition,runtime).at("current").at("path")==text_path(current));
         // A broken current game must not prevent recovery of a verified old app.
-        file(current/L"RushWindowsRT64.exe","damaged current game");auto restored=rollback_verified(upgraded,activate);expect(restored==old&&active==old&&fs::exists(current));unchanged();
+        file(current/L"RushWindowsRT64.exe","damaged current game");fs::remove(current/L"release.json");auto restored=rollback_verified(upgraded,activate);expect(restored==old&&active==old&&fs::exists(current));unchanged();
         std::cout<<"PASS synthetic transactions: "<<edition<<" / "<<runtime<<"\n";
     }
     expect(shortcuts.size()==4);refuses([]{releases(Json::array(),"original","unknown");});refuses([]{asset_name("other","v0.3.4","native");});

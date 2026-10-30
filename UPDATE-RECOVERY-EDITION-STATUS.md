@@ -35,8 +35,10 @@ native Updates UI checks, and synthetic native launcher/setup builds. This does
 not constitute Windows runtime or game compatibility acceptance.
 
 Windows execution in this environment is blocked: Wine cannot create its required
-socket (`Operation not permitted`). Native Windows CI covers the ROM-free tests;
-its result must be reviewed independently. Real private installer cycles and
+socket (`Operation not permitted`). The first native Windows CI run passed all four ROM-free C++ tests and both
+packaging tests on Windows Server 2025 / MSVC 19.51 (run 41074888266).
+The candidate also adds live download verification and recovery of a damaged
+current metadata file; review the final commit's CI result before acceptance. Real private installer cycles and
 interactive game/UI acceptance still require the private Windows build inputs,
 ROM copy and reviewed artwork/texture inputs; those are not in this checkout.
 No new complete game installer was built or published here.

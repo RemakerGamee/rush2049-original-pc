@@ -21,11 +21,13 @@ any installer. Native Windows UI and transaction checks require Windows.
 Coverage: four package identities and all 16 selection combinations; SHA-256 and
 incomplete download refusal; installer cancellation; wrong edition/interface;
 failed new-app preflight; protected receipt corruption; retained-file tampering;
-shortcut activation failure; offline recovery with a broken current game;
+shortcut activation failure; offline recovery with a broken current game and missing current metadata;
 byte-identical saves, controller/display/options files, ROM pointer and retained
 application folders; legacy v0.3.3 libultraship receipts; native menu preservation.
-The unchanged live-network checks in `rush-update-check.cpp --download-check`
-exercise in-transfer cancellation and bounded downloads on Windows.
+Enable `-DRUSH_TEST_LIVE_UPDATES=ON` for metadata checks of all four public
+streams and one representative native installer download. It checks SHA-256,
+tampering, in-transfer cancellation and response bounds entirely in memory;
+no installer is saved or executed. Windows CI enables this check.
 
 ## Full private package acceptance (required separately)
 

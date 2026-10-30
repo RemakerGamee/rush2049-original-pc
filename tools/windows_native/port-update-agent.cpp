@@ -121,7 +121,6 @@ int WINAPI wWinMain(HINSTANCE,HINSTANCE,LPWSTR,int){
     try{
         int count=0;auto args=CommandLineToArgvW(GetCommandLineW(),&count);if(count!=7&&count!=8){if(args)LocalFree(args);throw std::runtime_error("Start updates from Rush's Updates tab");}
         Context c{args[1],args[2],rush::rom::utf8(args[3]),rush::rom::utf8(args[4])};fs::path request=args[5];DWORD parent=std::stoul(args[6]);if(count==8)c.runtime=rush::rom::utf8(args[7]);LocalFree(args);
-        verify_identity(c.app,c,c.installed);
         safe(c.app);safe(c.data);safe(request);if(request.parent_path()!=c.data||!request.filename().wstring().starts_with(L"update-request-"))throw std::runtime_error("Invalid update request");
         Lock launcher(OpenProcess(SYNCHRONIZE,FALSE,parent));if(launcher.handle&&WaitForSingleObject(launcher.handle,120000)!=WAIT_OBJECT_0)throw std::runtime_error("The launcher is still running; installation cancelled");
         Session session(c.data);const auto raw=read(request,4096);auto j=Json::parse(raw.begin(),raw.end());fs::remove(request);
