@@ -67,7 +67,13 @@ if(RUSH_ENABLE_LUS_IMGUI)
 endif()
 
 if(RUSH_ENABLE_LUS_IMGUI)
-  file(WRITE "${CMAKE_BINARY_DIR}/rush-build-runtime.txt" "libultraship\n")
+  file(WRITE "${CMAKE_BINARY_DIR}/rush-configured-runtime.txt" "libultraship\n")
 else()
-  file(WRITE "${CMAKE_BINARY_DIR}/rush-build-runtime.txt" "native\n")
+  file(WRITE "${CMAKE_BINARY_DIR}/rush-configured-runtime.txt" "native\n")
 endif()
+
+# A configure-only flag change must not relabel an old executable.
+add_custom_command(TARGET RushWindowsRT64 POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy_if_different
+    "${CMAKE_BINARY_DIR}/rush-configured-runtime.txt"
+    "${CMAKE_BINARY_DIR}/rush-build-runtime.txt")
