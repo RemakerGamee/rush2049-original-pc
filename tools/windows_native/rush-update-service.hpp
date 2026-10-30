@@ -18,16 +18,21 @@ class Service {
 public:
     const std::string installed=environment("RUSH_RELEASE_VERSION",rush::release::version);
     const std::string edition=environment("RUSH_RELEASE_EDITION",environment("RUSH_REMASTER_TEXTURE_PACK").empty()?"original":"remastered");
+#ifdef RUSH_ENABLE_LUS_IMGUI
+    const std::string runtime=environment("RUSH_RELEASE_RUNTIME","libultraship");
+#else
+    const std::string runtime=environment("RUSH_RELEASE_RUNTIME","native");
+#endif
     const std::filesystem::path data=std::filesystem::u8path(environment("RUSH_OPTIONS_CONFIG")).parent_path();
     ~Service(){cancel();if(worker.joinable())worker.join();}
     Snapshot snapshot()const{std::lock_guard lock(mutex);return state;}
     void cancel(){cancelled=true;}
     template<class F> void start(F action){
         if(snapshot().busy)return;if(worker.joinable())worker.join();cancelled=false;
-        {std::lock_guard lock(mutex);state.busy=true;state.message="Connecting to the approved Rush release source...";}
+        {std::lock_guard lock(mutex);state.busy=true;state.ready=false;state.message="Connecting to the approved Rush release source...";}
         worker=std::thread([this,action]{try{action();}catch(const std::exception& e){std::lock_guard lock(mutex);state.message=e.what();state.ready=false;}std::lock_guard lock(mutex);state.busy=false;});
     }
-    void check(const std::string& target={}){start([this,target]{auto release=select(online(edition,cancelled),installed,target);std::lock_guard lock(mutex);state.release=release;state.ready=false;state.received=0;state.message=release.tag.empty()?"No newer public updates are available for this edition.":"A verified release is available. Review the notes before downloading.";});}
+    void check(const std::string& target={}){start([this,target]{{std::lock_guard lock(mutex);state.release={};state.received=0;}auto release=select(online(edition,cancelled,runtime),installed,target);std::lock_guard lock(mutex);state.release=release;state.ready=false;state.received=0;state.message=release.tag.empty()?"No newer public updates are available for this edition.":"A verified release is available. Review the notes before downloading.";});}
     void download(){const auto release=snapshot().release;if(release.tag.empty())return;
         start([this,release]{auto bytes=fetch(release.url,release.bytes,cancelled,[this](uint64_t n){std::lock_guard lock(mutex);state.received=n;state.message="Downloading update...";});verify(release,bytes);if(cancelled)throw std::runtime_error("Update cancelled");
             // A cache is separate from versioned application files and player saves.
@@ -44,11 +49,11 @@ public:
     std::string previous()const{
         // The protected catalog can include thousands of remaster files. Read it once,
         // rather than decrypting/parsing it on every gameplay presentation frame.
-        std::call_once(rollback_once,[this]{try{rollback_version=previous_version(data,installed,edition,executable_folder());}catch(const std::exception& e){rollback_failure=e.what();}});
+        std::call_once(rollback_once,[this]{try{rollback_version=previous_version(data,installed,edition,executable_folder(),runtime);}catch(const std::exception& e){rollback_failure=e.what();}});
         if(!rollback_failure.empty())throw std::runtime_error(rollback_failure);return rollback_version;
     }
     void request_install(){auto s=snapshot();if(s.busy||!s.ready)throw std::runtime_error("Download and verify the update first");write_ticket(Json{{"action","install"},{"tag",s.release.tag}});}
-    void request_rollback(){if(snapshot().busy)throw std::runtime_error("Wait for the active update operation");if(previous_version(data,installed,edition,executable_folder()).empty())throw std::runtime_error("No verified previous installation is available");write_ticket(Json{{"action","rollback"}});}
+    void request_rollback(){if(snapshot().busy)throw std::runtime_error("Wait for the active update operation");if(previous_version(data,installed,edition,executable_folder(),runtime).empty())throw std::runtime_error("No verified previous installation is available");write_ticket(Json{{"action","rollback"}});}
     void write_ticket(const Json& ticket){
         const auto request=environment("RUSH_UPDATE_REQUEST");if(request.empty())throw std::runtime_error("Start Rush with the installed launcher to install updates");
         auto path=std::filesystem::u8path(request);if(path.parent_path()!=data)throw std::runtime_error("Invalid update request folder");

@@ -16,6 +16,9 @@ static std::unique_ptr<rush::cheats::Visibility> cheat_visibility;
 #include <SDL.h>
 #include <SDL_syswm.h>
 #include <Windows.h>
+#ifndef RUSH_ENABLE_LUS_IMGUI
+#include "native-updates-ui.hpp"
+#endif
 #define XXH_INLINE_ALL
 #include "xxhash.h"
 #include <cstdio>
@@ -907,6 +910,9 @@ int wmain(int argc,wchar_t** wide_argv) {
     SDL_VERSION(&native.version);
     require(SDL_GetWindowWMInfo(window, &native) == SDL_TRUE, SDL_GetError());
     ShowWindow(native.info.win.window, SW_SHOW);
+#ifndef RUSH_ENABLE_LUS_IMGUI
+    rush::native_updates::attach(native.info.win.window);
+#endif
 #ifdef RUSH_ENABLE_LUS_IMGUI
     rush::options::window=window;
     const char* cheat_path=std::getenv("RUSH_CHEAT_CONFIG");
@@ -1006,6 +1012,10 @@ int wmain(int argc,wchar_t** wide_argv) {
     std::puts("NATIVE_RUNTIME_RETURNED: shutdown completed");
     controller_input->manager().shutdown();
     controller_input.reset();
+
+#ifndef RUSH_ENABLE_LUS_IMGUI
+    rush::native_updates::detach();
+#endif
     SDL_DestroyWindow(window);
     SDL_Quit();
     return 0;

@@ -33,10 +33,20 @@ def resources(directory,payload,remastered=False,icon=None,remaster_only=False,n
     header='#pragma once\nnamespace payload { struct Entry { int id; const wchar_t* path; const char* sha256; }; inline constexpr Entry files[]={\n'
     header+=''.join('{'+str(row['id'])+',L'+json.dumps(row['path'])+','+json.dumps(row['sha256'])+'},\n' for row in entries)
     if remaster_only and not remastered:raise ValueError('Remaster-only requires a texture pack')
+    remaster_only=remastered
     header+='}; inline constexpr bool lus='+('false' if native_menus else 'true')+'; inline constexpr bool remastered='+('true' if remastered else 'false')+'; inline constexpr bool remaster_only='+('true' if remaster_only else 'false')+'; inline constexpr wchar_t edition[]=L"Rush 2049 '+(('Remastered' if remastered else 'Original')+('' if native_menus else ' libultraship'))+'"; }\n'
     (directory/'payload_table.hpp').write_text(header)
     (directory/'setup.rc').write_text(''.join(rc))
     return entries
+
+def validate_build(native,native_menus):
+    expected='native' if native_menus else 'libultraship'
+    marker=native/'build/rush-build-runtime.txt'
+    if not marker.is_file() or marker.read_text(encoding='utf-8').strip()!=expected:
+        raise ValueError('Rebuild with the matching RUSH_ENABLE_LUS_IMGUI setting before packaging')
+    for name in ('RushWindowsRT64.exe','PortUpdateAgent.exe','SDL2.dll','dxcompiler.dll','dxil.dll'):
+        if not (native/'build/Release'/name).is_file():
+            raise ValueError('Incomplete update-capable build: '+name)
 
 def main():
     parser=argparse.ArgumentParser();parser.add_argument('--native-root',required=True,type=Path);parser.add_argument('--output',required=True,type=Path);parser.add_argument('--source-archive',required=True,type=Path);parser.add_argument('--remaster-pack',type=Path)
@@ -48,6 +58,9 @@ def main():
     if not re.fullmatch(r"[0-9]{1,5}\.[0-9]{1,5}\.[0-9]{1,5}",args.version):raise ValueError("Expected a numeric three-part release version")
     native=args.native_root.resolve();output=args.output.resolve()
     if args.remaster_only and not args.remaster_pack:raise ValueError('--remaster-only requires --remaster-pack')
+    # Each new package has one visual edition and one settings interface.
+    args.remaster_only=bool(args.remaster_pack)
+    validate_build(native,args.native_menus)
     if not args.icon.is_file() or args.icon.read_bytes()[:4] != b'\x00\x00\x01\x00': raise ValueError('Valid Windows ICO required')
     with zipfile.ZipFile(args.source_archive) as source_zip:
         if source_zip.testzip() is not None or 'tools/windows_native/lus-component.cmake' not in source_zip.namelist():
@@ -56,8 +69,7 @@ def main():
     output.mkdir(parents=True);payload=output/'payload';payload.mkdir()
     for name in ('RushWindowsRT64.exe','SDL2.dll','dxcompiler.dll','dxil.dll'):
         shutil.copyfile(native/'build/Release'/name,payload/name)
-    if not args.native_menus:
-        shutil.copyfile(native/'build/Release/PortUpdateAgent.exe',payload/'PortUpdateAgent.exe')
+    shutil.copyfile(native/'build/Release/PortUpdateAgent.exe',payload/'PortUpdateAgent.exe')
     from embed_icon import embed_icon
     embed_icon(payload/'RushWindowsRT64.exe',args.icon)
     shutil.copyfile(args.icon,payload/'Rush2049.ico')
@@ -104,7 +116,7 @@ def main():
     edition_name='Remastered' if args.remaster_pack else 'Original'
     runtime_name='' if args.native_menus else '-Libultraship'
     installer=output/f'Rush2049-{edition_name}{runtime_name}-PC-v{args.version}-Setup.exe';shutil.copyfile(output/'setup-build/Release/Rush2049OriginalSetup.exe',installer)
-    manifest={'version':'v'+args.version,'edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
+    manifest={'runtime':metadata['runtime'],'version':'v'+args.version,'edition':'remastered' if args.remaster_pack else 'original','rom_included':False,'game_data_included':False,'texture_pack_included':bool(args.remaster_pack),'texture_count':5957 if args.remaster_pack else 0,'external_rom_required_every_launch':True,'files':table,'installer_sha256':hashlib.sha256(installer.read_bytes()).hexdigest()}
     (output/'package-manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     (output/'SHA256SUMS.txt').write_text(manifest['installer_sha256']+'  '+installer.name+'\n')
     print(json.dumps({'installer':str(installer),'size':installer.stat().st_size,'sha256':manifest['installer_sha256'],'payload_files':len(table)}))

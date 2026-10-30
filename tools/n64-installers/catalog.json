@@ -1,0 +1,981 @@
+{
+  "schema": 1,
+  "games": [
+    {
+      "game_id": "aidyn-chronicles-the-first-mage",
+      "title": "Aidyn Chronicles: The First Mage",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/aidyn-chronicles-the-first-mage/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "army-men-sarges-heroes",
+      "title": "Army Men: Sarge’s Heroes",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/army-men-sarges-heroes/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "banjo-kazooie",
+      "title": "Banjo-Kazooie",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/banjo-kazooie/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "banjo-tooie",
+      "title": "Banjo-Tooie",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/banjo-tooie/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "battletanx",
+      "title": "BattleTanx",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/battletanx/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "battletanx-global-assault",
+      "title": "BattleTanx: Global Assault",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/battletanx-global-assault/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "blast-corps",
+      "title": "Blast Corps",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/blast-corps/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "body-harvest",
+      "title": "Body Harvest",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/body-harvest/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "bomberman-64",
+      "title": "Bomberman 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/bomberman-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "bomberman-64-the-second-attack",
+      "title": "Bomberman 64: The Second Attack!",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/bomberman-64-the-second-attack/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "bomberman-hero",
+      "title": "Bomberman Hero",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/bomberman-hero/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "castlevania-legacy-of-darkness",
+      "title": "Castlevania: Legacy of Darkness",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/castlevania-legacy-of-darkness/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "conkers-bad-fur-day",
+      "title": "Conker’s Bad Fur Day",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/conkers-bad-fur-day/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "diddy-kong-racing",
+      "title": "Diddy Kong Racing",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/diddy-kong-racing/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "donkey-kong-64",
+      "title": "Donkey Kong 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/donkey-kong-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "doom-64",
+      "title": "Doom 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/doom-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "dr-mario-64",
+      "title": "Dr. Mario 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/dr-mario-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "duke-nukem-64",
+      "title": "Duke Nukem 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/duke-nukem-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "duke-nukem-zero-hour",
+      "title": "Duke Nukem: Zero Hour",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/duke-nukem-zero-hour/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "f-zero-x",
+      "title": "F-Zero X",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/f-zero-x/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "glover",
+      "title": "Glover",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/glover/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "goldeneye-007",
+      "title": "GoldenEye 007",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/goldeneye-007/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "harvest-moon-64",
+      "title": "Harvest Moon 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/harvest-moon-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "hybrid-heaven",
+      "title": "Hybrid Heaven",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/hybrid-heaven/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "jet-force-gemini",
+      "title": "Jet Force Gemini",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/jet-force-gemini/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "kirby-64-the-crystal-shards",
+      "title": "Kirby 64: The Crystal Shards",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/kirby-64-the-crystal-shards/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mario-kart-64",
+      "title": "Mario Kart 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mario-kart-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mario-party-1",
+      "title": "Mario Party",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mario-party-1/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mario-party-2",
+      "title": "Mario Party 2",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mario-party-2/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mario-party-3",
+      "title": "Mario Party 3",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mario-party-3/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mega-man-64",
+      "title": "Mega Man 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mega-man-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mischief-makers",
+      "title": "Mischief Makers",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mischief-makers/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mortal-kombat-trilogy",
+      "title": "Mortal Kombat Trilogy",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mortal-kombat-trilogy/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "mystical-ninja-starring-goemon",
+      "title": "Mystical Ninja Starring Goemon",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/mystical-ninja-starring-goemon/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "paper-mario",
+      "title": "Paper Mario",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/paper-mario/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "perfect-dark",
+      "title": "Perfect Dark",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/perfect-dark/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "pilotwings-64",
+      "title": "Pilotwings 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/pilotwings-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "quest-64",
+      "title": "Quest 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/quest-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "rampage-2-universal-tour",
+      "title": "Rampage 2: Universal Tour",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/rampage-2-universal-tour/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "rampage-world-tour",
+      "title": "Rampage: World Tour",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/rampage-world-tour/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "road-rash-64",
+      "title": "Road Rash 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/road-rash-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "rush-2-extreme-racing-usa",
+      "title": "Rush 2: Extreme Racing USA",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/rush-2-extreme-racing-usa/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "san-francisco-rush-2049",
+      "title": "San Francisco Rush 2049",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/san-francisco-rush-2049/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "snowboard-kids",
+      "title": "Snowboard Kids",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/snowboard-kids/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "snowboard-kids-2",
+      "title": "Snowboard Kids 2",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/snowboard-kids-2/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "space-station-silicon-valley",
+      "title": "Space Station Silicon Valley",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/space-station-silicon-valley/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "star-fox-64",
+      "title": "Star Fox 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/star-fox-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "star-wars-episode-i-racer",
+      "title": "Star Wars Episode I: Racer",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/star-wars-episode-i-racer/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "star-wars-rogue-squadron",
+      "title": "Star Wars: Rogue Squadron",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/star-wars-rogue-squadron/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "starcraft-64",
+      "title": "StarCraft 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/starcraft-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "super-mario-64",
+      "title": "Super Mario 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/super-mario-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "super-smash-bros",
+      "title": "Super Smash Bros.",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/super-smash-bros/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "the-legend-of-zelda-majoras-mask",
+      "title": "The Legend of Zelda: Majora’s Mask",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/the-legend-of-zelda-majoras-mask/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "the-legend-of-zelda-ocarina-of-time",
+      "title": "The Legend of Zelda: Ocarina of Time",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/the-legend-of-zelda-ocarina-of-time/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "tony-hawks-pro-skater",
+      "title": "Tony Hawk's Pro Skater",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/tony-hawks-pro-skater/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "turok-rage-wars",
+      "title": "Turok: Rage Wars",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/turok-rage-wars/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "wcw-vs-nwo-world-tour",
+      "title": "WCW vs. nWo: World Tour",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/wcw-vs-nwo-world-tour/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "wcw-nwo-revenge",
+      "title": "WCW/nWo Revenge",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/wcw-nwo-revenge/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "wave-race-64",
+      "title": "Wave Race 64",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/wave-race-64/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "wayne-gretzkys-3d-hockey",
+      "title": "Wayne Gretzky’s 3D Hockey",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/wayne-gretzkys-3d-hockey/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    },
+    {
+      "game_id": "yoshis-story",
+      "title": "Yoshi’s Story",
+      "platform": "windows-x64",
+      "installer_required": true,
+      "updates_required": true,
+      "support_required": true,
+      "installer_available": false,
+      "payload_status": "awaiting-built-game-export",
+      "source_archive_included": false,
+      "update_feed": "https://retroremakes.retroremakes.chatgpt.site/programs/n64/games/yoshis-story/latest.json",
+      "support": {
+        "discord": "https://discord.gg/Z7P6WrDfBW",
+        "email": "retroremakes26@gmail.com"
+      }
+    }
+  ]
+}

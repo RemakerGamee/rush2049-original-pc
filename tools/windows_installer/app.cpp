@@ -204,6 +204,7 @@ static int launch(const fs::path& app,const fs::path& data,bool preflight) {
     for(const auto& name:remove)SetEnvironmentVariableW(name.c_str(),nullptr);
     if(visualEdition==1){SetEnvironmentVariableW(L"RUSH_REMASTER_TEXTURE_PACK",(app/L"remaster-pack").c_str());SetEnvironmentVariableW(L"RUSH_REMASTER_CIRCUIT_GLOW",L"1");}
     SetEnvironmentVariableW(L"RUSH_LUS_IMGUI",payload::lus?L"1":nullptr);
+    SetEnvironmentVariableW(L"RUSH_RELEASE_RUNTIME",payload::lus?L"libultraship":L"native");
     SetEnvironmentVariableW(L"RUSH_RELEASE_VERSION",rush::rom::wide(rush::release::version).c_str());
     SetEnvironmentVariableW(L"RUSH_RELEASE_EDITION",visualEdition==1?L"remastered":L"original");
     const auto updateRequest=data/(L"update-request-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L".json");
@@ -221,9 +222,9 @@ static int launch(const fs::path& app,const fs::path& data,bool preflight) {
     CloseHandle(log);CloseHandle(input);
     if(!created)throw std::runtime_error("The game could not start. Reinstall this version and check Vulkan support.");
     WaitForSingleObject(child.hProcess,INFINITE);DWORD status=1;GetExitCodeProcess(child.hProcess,&status);CloseHandle(child.hThread);CloseHandle(child.hProcess);
-    if(status==0 && payload::lus && fs::exists(updateRequest)){
+    if(status==0 && fs::exists(updateRequest)){
         const auto agent=app/L"PortUpdateAgent.exe";
-        auto args=quote(agent.wstring())+L" "+quote(app.wstring())+L" "+quote(data.wstring())+L" "+quote(rush::rom::wide(rush::release::version))+L" "+quote(visualEdition==1?L"remastered":L"original")+L" "+quote(updateRequest.wstring())+L" "+std::to_wstring(GetCurrentProcessId());
+        auto args=quote(agent.wstring())+L" "+quote(app.wstring())+L" "+quote(data.wstring())+L" "+quote(rush::rom::wide(rush::release::version))+L" "+quote(visualEdition==1?L"remastered":L"original")+L" "+quote(updateRequest.wstring())+L" "+std::to_wstring(GetCurrentProcessId())+L" "+quote(payload::lus?L"libultraship":L"native");
         STARTUPINFOW agentStart{sizeof(agentStart)};PROCESS_INFORMATION process{};
         if(!CreateProcessW(agent.c_str(),args.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,app.c_str(),&agentStart,&process))throw std::runtime_error("Cannot open the update helper. Your previous application is retained.");
         CloseHandle(process.hThread);CloseHandle(process.hProcess);
@@ -234,7 +235,8 @@ static int launch(const fs::path& app,const fs::path& data,bool preflight) {
 
 #ifndef RUSH_SETUP
 static void verify_recovery_helper(const fs::path& app,const fs::path& data){
-    if(!payload::lus||!fs::exists(data/L"update-history.dat"))throw std::runtime_error("No previous verified application is recorded");
+    const auto receipt=data/(L"update-history-"+std::wstring(payload::remastered?L"remastered":L"original")+L"-"+(payload::lus?L"libultraship":L"native")+L".dat");
+    if(!fs::exists(receipt)&&!(payload::lus&&fs::exists(data/L"update-history.dat")))throw std::runtime_error("No previous verified application is recorded");
     safe(data);const auto helper=app/L"PortUpdateAgent.exe";safe(helper);
     for(const auto& item:payload::files)if(fs::path(item.path)==L"PortUpdateAgent.exe"){
         auto bytes=read(helper);if(rush::rom::hash(bytes.data(),bytes.size(),BCRYPT_SHA256_ALGORITHM)!=item.sha256)throw std::runtime_error("Rollback helper failed verification");return;
@@ -243,14 +245,14 @@ static void verify_recovery_helper(const fs::path& app,const fs::path& data){
 static bool offer_recovery(const fs::path& app,const fs::path& data,const std::string& failure){
     try{verify_recovery_helper(app,data);}catch(...){return false;}
     auto message=rush::rom::wide(failure)+L"\n\nRestore the previous verified Rush application?\nYour player data stays in place and the game will not restart automatically.";
-    if(MessageBoxW(nullptr,message.c_str(),L"Rush 2049 — restore previous version?",MB_YESNO|MB_DEFBUTTON2|MB_ICONWARNING)==IDYES){
+    if(MessageBoxW(nullptr,message.c_str(),L"Rush 2049 â€” restore previous version?",MB_YESNO|MB_DEFBUTTON2|MB_ICONWARNING)==IDYES){
         try{
             auto request=data/(L"update-request-"+std::to_wstring(GetCurrentProcessId())+L"-"+std::to_wstring(GetTickCount64())+L".json");
             const std::string ticket=R"({"action":"rollback"})";write_new(request,reinterpret_cast<const uint8_t*>(ticket.data()),ticket.size());
-            auto agent=app/L"PortUpdateAgent.exe";auto args=quote(agent.wstring())+L" "+quote(app.wstring())+L" "+quote(data.wstring())+L" "+quote(rush::rom::wide(rush::release::version))+L" "+quote(visualEdition==1||payload::remaster_only?L"remastered":L"original")+L" "+quote(request.wstring())+L" "+std::to_wstring(GetCurrentProcessId());
+            auto agent=app/L"PortUpdateAgent.exe";auto args=quote(agent.wstring())+L" "+quote(app.wstring())+L" "+quote(data.wstring())+L" "+quote(rush::rom::wide(rush::release::version))+L" "+quote(visualEdition==1||payload::remaster_only?L"remastered":L"original")+L" "+quote(request.wstring())+L" "+std::to_wstring(GetCurrentProcessId())+L" "+quote(payload::lus?L"libultraship":L"native");
             STARTUPINFOW start{sizeof(start)};PROCESS_INFORMATION child{};
             if(!CreateProcessW(agent.c_str(),args.data(),nullptr,nullptr,FALSE,CREATE_NO_WINDOW,nullptr,app.c_str(),&start,&child))throw std::runtime_error("Cannot open the rollback helper; both application folders are retained");CloseHandle(child.hThread);CloseHandle(child.hProcess);
-        }catch(const std::exception& e){MessageBoxW(nullptr,rush::rom::wide(e.what()).c_str(),L"Rush rollback — action required",MB_OK|MB_ICONERROR);}
+        }catch(const std::exception& e){MessageBoxW(nullptr,rush::rom::wide(e.what()).c_str(),L"Rush rollback â€” action required",MB_OK|MB_ICONERROR);}
     }return true;
 }
 #endif
